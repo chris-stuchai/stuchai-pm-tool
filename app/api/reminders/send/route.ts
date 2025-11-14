@@ -88,8 +88,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Error sending reminder:", error)
+    
+    // Check if it's a Gmail permission error
+    if (error?.code === 403 || error?.message?.includes("Insufficient Permission") || error?.message?.includes("insufficient_scope")) {
+      return NextResponse.json(
+        { error: "Gmail permission required. Please reconnect your Google account with Gmail access." },
+        { status: 403 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: error.message || "Failed to send reminder" },
+      { error: error.message || "Failed to send reminder. Please ensure Gmail is connected." },
       { status: 500 }
     )
   }
