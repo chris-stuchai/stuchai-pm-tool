@@ -396,7 +396,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data.recentProjects.length === 0 ? (
+              {!data.recentProjects || data.recentProjects.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No projects yet</p>
               ) : (
                 data.recentProjects.map((project) => (
@@ -428,7 +428,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data.upcomingActionItems.length === 0 ? (
+              {!data.upcomingActionItems || data.upcomingActionItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No upcoming tasks</p>
               ) : (
                 data.upcomingActionItems.map((item) => (
