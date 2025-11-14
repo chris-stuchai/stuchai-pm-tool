@@ -29,10 +29,10 @@ import * as z from "zod"
 
 const actionItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  projectId: z.string().optional().nullable(),
-  assignedTo: z.string().optional().nullable(),
-  dueDate: z.string().optional(),
+  description: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable().or(z.literal("")),
+  assignedTo: z.string().optional().nullable().or(z.literal("")),
+  dueDate: z.string().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 })
 
@@ -102,14 +102,34 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
     setLoading(true)
     try {
       // Clean up the data - convert empty strings to null
-      const cleanedData = {
-        title: data.title,
-        description: data.description || null,
-        projectId: data.projectId && data.projectId.trim() !== "" ? data.projectId : null,
-        assignedTo: data.assignedTo && data.assignedTo.trim() !== "" ? data.assignedTo : null,
-        dueDate: data.dueDate && data.dueDate.trim() !== "" ? data.dueDate : null,
+      const cleanedData: any = {
+        title: data.title.trim(),
+        description: data.description?.trim() || null,
         priority: data.priority || "MEDIUM",
       }
+
+      // Handle projectId - convert empty string to null
+      if (data.projectId && data.projectId.trim() !== "") {
+        cleanedData.projectId = data.projectId
+      } else {
+        cleanedData.projectId = null
+      }
+
+      // Handle assignedTo - convert empty string to null
+      if (data.assignedTo && data.assignedTo.trim() !== "") {
+        cleanedData.assignedTo = data.assignedTo
+      } else {
+        cleanedData.assignedTo = null
+      }
+
+      // Handle dueDate
+      if (data.dueDate && data.dueDate.trim() !== "") {
+        cleanedData.dueDate = data.dueDate
+      } else {
+        cleanedData.dueDate = null
+      }
+
+      console.log("Submitting action item:", cleanedData)
 
       const response = await fetch("/api/action-items", {
         method: "POST",
@@ -117,13 +137,23 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         body: JSON.stringify(cleanedData),
       })
 
+      const responseData = await response.json().catch(() => ({}))
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to create action item")
+        console.error("API Error:", responseData)
+        throw new Error(responseData.error || `Failed to create action item: ${response.status}`)
       }
 
+      console.log("Action item created successfully:", responseData)
       setOpen(false)
-      reset()
+      reset({
+        title: "",
+        description: "",
+        projectId: projectId || null,
+        assignedTo: null,
+        dueDate: "",
+        priority: "MEDIUM",
+      })
       router.refresh()
     } catch (error) {
       console.error("Error creating action item:", error)
@@ -175,7 +205,10 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
               <div className="grid gap-2">
                 <Label htmlFor="projectId">Project (Optional)</Label>
                 <Select
-                  onValueChange={(value) => setValue("projectId", value === "" ? null : value)}
+                  onValueChange={(value) => {
+                    const newValue = value === "" ? null : value
+                    setValue("projectId", newValue, { shouldValidate: true })
+                  }}
                   value={watch("projectId") || ""}
                 >
                   <SelectTrigger>
@@ -195,7 +228,10 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
             <div className="grid gap-2">
               <Label htmlFor="assignedTo">Assign To (Optional)</Label>
               <Select
-                onValueChange={(value) => setValue("assignedTo", value === "" ? null : value)}
+                onValueChange={(value) => {
+                  const newValue = value === "" ? null : value
+                  setValue("assignedTo", newValue, { shouldValidate: true })
+                }}
                 value={watch("assignedTo") || ""}
               >
                 <SelectTrigger>
@@ -215,7 +251,7 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
               <div className="grid gap-2">
                 <Label htmlFor="priority">Priority</Label>
                 <Select
-                  onValueChange={(value) => setValue("priority", value as any)}
+                  onValueChange={(value) => setValue("priority", value as "LOW" | "MEDIUM" | "HIGH" | "URGENT", { shouldValidate: true })}
                   value={watch("priority") || "MEDIUM"}
                 >
                   <SelectTrigger>
