@@ -139,7 +139,7 @@ export default function SignInPage() {
                 </Button>
               </form>
               <p className="mt-4 text-center text-sm text-muted-foreground">
-                Don't have an account? Contact your administrator to create one.
+                Don&apos;t have an account? Contact your administrator to create one.
               </p>
             </TabsContent>
           </Tabs>
