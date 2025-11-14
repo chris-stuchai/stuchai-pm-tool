@@ -21,9 +21,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico, robots.txt, sitemap.xml
      * - auth (auth pages)
-     * - Files with common extensions (.png, .jpg, .ico, .svg, etc.)
+     * - Any file with an extension (contains a dot in the last path segment)
      */
-    "/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|auth/|.*\\.).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|auth/)(?!.*\\.[a-z0-9]+$).*)",
   ],
 }
 
