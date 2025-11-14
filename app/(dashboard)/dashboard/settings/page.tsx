@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, AlertCircle, Mail, Calendar, HardDrive } from "lucide-react"
 import { ReconnectGoogleButton } from "@/components/settings/ReconnectGoogleButton"
+import { EditableProfile } from "@/components/settings/EditableProfile"
 
 async function getGoogleAccountStatus(userId: string) {
   const account = await db.account.findFirst({
@@ -61,27 +62,14 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Account Information</CardTitle>
-            <CardDescription>Your account details</CardDescription>
+            <CardDescription>Manage your profile details</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Name</p>
-                <p className="text-sm text-muted-foreground">{session.user.name || "Not set"}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Email</p>
-                <p className="text-sm text-muted-foreground">{session.user.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Role</p>
-                <p className="text-sm text-muted-foreground capitalize">{session.user.role?.toLowerCase()}</p>
-              </div>
-            </div>
+          <CardContent>
+            <EditableProfile
+              name={session.user.name}
+              email={session.user.email!}
+              role={session.user.role}
+            />
           </CardContent>
         </Card>
 
