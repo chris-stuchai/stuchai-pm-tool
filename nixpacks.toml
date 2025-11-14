@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x", "openssl"]
+nixPkgs = ["nodejs_18", "npm-9_x", "openssl", "bash"]
 
 [phases.install]
 cmds = ["npm ci"]
@@ -8,5 +8,5 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "node server.js"
+cmd = "npm start"
 
