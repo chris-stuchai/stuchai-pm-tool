@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserRole } from "@prisma/client"
 import { UserManagementTable } from "@/components/users/UserManagementTable"
+import { InviteEmployeeCard } from "@/components/users/InviteEmployeeCard"
 
 /**
  * Fetch all users for admin management
@@ -68,12 +69,25 @@ export default async function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>How to Add Your CEO as Admin</CardTitle>
+          <CardTitle>Employee Onboarding</CardTitle>
+          <CardDescription>
+            Invite employees, co-founders, or contractors with a secure link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InviteEmployeeCard />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>How employee invitations work</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p><strong>Step 1:</strong> Have your CEO sign in with their Google account or email/password</p>
-          <p><strong>Step 2:</strong> Once they appear in the list above, change their role to &quot;Admin&quot;</p>
-          <p><strong>Step 3:</strong> They&apos;ll immediately have full admin access to see everything you see</p>
+          <p><strong>Step 1:</strong> Enter their name, email, and select a role (Admin or Manager).</p>
+          <p><strong>Step 2:</strong> Share the generated invite link — it stays active for 7 days.</p>
+          <p><strong>Step 3:</strong> They create their password and are automatically provisioned with the role you selected.</p>
+          <p><strong>Step 4:</strong> You can adjust their permissions anytime from the table above.</p>
         </CardContent>
       </Card>
 

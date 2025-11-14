@@ -2,7 +2,13 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { UserRole } from "@prisma/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -11,8 +17,12 @@ import Link from "next/link"
 import { formatDate } from "@/lib/utils"
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog"
 
-async function getProjects() {
-  const projects = await db.project.findMany({
+async function getProjectsForUser(user: {
+  id: string
+  role: UserRole
+  email?: string | null
+}) {
+  const baseQuery = {
     include: {
       client: {
         select: {
@@ -38,24 +48,59 @@ async function getProjects() {
     orderBy: {
       updatedAt: "desc",
     },
+  }
+
+  if (user.role !== UserRole.CLIENT) {
+    return db.project.findMany(baseQuery)
+  }
+
+  if (!user.email) {
+    return []
+  }
+
+  const client = await db.client.findFirst({
+    where: {
+      email: user.email.toLowerCase(),
+    },
+    select: {
+      id: true,
+    },
   })
 
-  return projects
+  if (!client) {
+    return []
+  }
+
+  return db.project.findMany({
+    where: {
+      clientId: client.id,
+    },
+    ...baseQuery,
+  })
 }
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  const projects = await getProjects()
+  const projects = await getProjectsForUser({
+    id: session.user.id,
+    role: session.user.role,
+    email: session.user.email,
+  })
   const canCreate = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
+  const isClient = session.user.role === UserRole.CLIENT
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
-          <p className="text-gray-600 mt-1">Manage all your projects</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isClient ? "My Projects" : "Projects"}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isClient ? "Everything we are building for you" : "Manage all your projects"}
+          </p>
         </div>
         {canCreate && <CreateProjectDialog />}
       </div>
@@ -78,7 +123,9 @@ export default async function ProjectsPage() {
                   <CardTitle className="text-lg">{project.name}</CardTitle>
                   <Badge variant="outline">{project.status}</Badge>
                 </div>
-                <CardDescription>{project.client.name}</CardDescription>
+                <CardDescription>
+                  {isClient ? project.status : project.client.name}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">

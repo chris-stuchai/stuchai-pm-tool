@@ -88,6 +88,7 @@ model User {
   mentions           Mention[]
   createdMeetings    Meeting[]             @relation("MeetingCreator")
   meetingAttendees   MeetingAttendee[]
+  createdUserInvitations UserInvitation[]  @relation("UserInvitationCreator")
 
   @@map("users")
 }
@@ -378,5 +379,21 @@ model ClientInvitation {
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("client_invitations")
+}
+
+model UserInvitation {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CLIENT)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  creator   User?    @relation("UserInvitationCreator", fields: [createdBy], references: [id])
+
+  @@map("user_invitations")
 }
 
