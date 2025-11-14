@@ -9,7 +9,8 @@ import {
   CheckSquare, 
   Bell,
   Settings,
-  LogOut
+  LogOut,
+  ListTodo
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ const navigation = [
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
   { name: "Action Items", href: "/dashboard/actions", icon: CheckSquare },
+  { name: "My Tasks", href: "/dashboard/personal-tasks", icon: ListTodo },
   { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
 ]
 
