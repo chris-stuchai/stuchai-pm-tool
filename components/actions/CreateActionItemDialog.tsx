@@ -112,14 +112,14 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       // Handle projectId - use prop if provided, otherwise use form value
       if (projectId) {
         cleanedData.projectId = projectId
-      } else if (data.projectId && typeof data.projectId === "string" && data.projectId.trim() !== "") {
+      } else if (data.projectId && typeof data.projectId === "string" && data.projectId !== "__none__" && data.projectId.trim() !== "") {
         cleanedData.projectId = data.projectId
       } else {
         cleanedData.projectId = null
       }
 
-      // Handle assignedTo - convert empty string to null
-      if (data.assignedTo && data.assignedTo.trim() !== "") {
+      // Handle assignedTo - convert special value to null
+      if (data.assignedTo && data.assignedTo !== "__unassigned__" && typeof data.assignedTo === "string" && data.assignedTo.trim() !== "") {
         cleanedData.assignedTo = data.assignedTo
       } else {
         cleanedData.assignedTo = null
@@ -209,16 +209,16 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                 <Label htmlFor="projectId">Project (Optional)</Label>
                 <Select
                   onValueChange={(value) => {
-                    const newValue = value === "" ? null : value
+                    const newValue = value === "__none__" ? null : value
                     setValue("projectId", newValue, { shouldValidate: true })
                   }}
-                  value={watch("projectId") || ""}
+                  value={watch("projectId") || "__none__"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a project (or leave blank for global)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Global)</SelectItem>
+                    <SelectItem value="__none__">None (Global)</SelectItem>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.name}
@@ -232,16 +232,16 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
               <Label htmlFor="assignedTo">Assign To (Optional)</Label>
               <Select
                 onValueChange={(value) => {
-                  const newValue = value === "" ? null : value
+                  const newValue = value === "__unassigned__" ? null : value
                   setValue("assignedTo", newValue, { shouldValidate: true })
                 }}
-                value={watch("assignedTo") || ""}
+                value={watch("assignedTo") || "__unassigned__"}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a user" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name || user.email}
