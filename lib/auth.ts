@@ -52,43 +52,50 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = token.id as string
-        session.user.role = (token.role as UserRole) || UserRole.CLIENT
+    async session({ session, token, user }) {
+      if (session.user) {
+        // For OAuth (database sessions via adapter)
+        if (user) {
+          session.user.id = user.id
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
+          })
+          session.user.role = dbUser?.role || UserRole.CLIENT
+        } 
+        // For credentials (JWT)
+        else if (token) {
+          session.user.id = token.id as string
+          session.user.role = (token.role as UserRole) || UserRole.CLIENT
+        }
       }
       return session
     },
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        // Get role from database if not in token
-        if (!token.role) {
+        if ((user as any).role) {
+          token.role = (user as any).role
+        } else {
+          // Fetch role from database
           const dbUser = await db.user.findUnique({
             where: { id: user.id },
             select: { role: true },
           })
           token.role = dbUser?.role || UserRole.CLIENT
-        } else {
-          token.role = (user as any).role || UserRole.CLIENT
         }
       }
       return token
     },
     async signIn({ user, account, profile }) {
-      // Let the adapter handle account linking
-      // We'll set the role in the user creation callback
+      // Let the adapter handle OAuth account creation and linking
       return true
     },
   },
   events: {
     async createUser({ user }) {
-      // Set role for new users (only if not already set)
-      const dbUser = await db.user.findUnique({
-        where: { id: user.id },
-      })
-      
-      if (dbUser && !dbUser.role) {
+      // Set role for new users created via OAuth
+      try {
         const userCount = await db.user.count()
         const role = userCount === 1 ? UserRole.ADMIN : UserRole.CLIENT
         
@@ -96,6 +103,8 @@ export const authOptions: NextAuthOptions = {
           where: { id: user.id },
           data: { role },
         })
+      } catch (error) {
+        console.error("Error setting user role:", error)
       }
     },
   },
