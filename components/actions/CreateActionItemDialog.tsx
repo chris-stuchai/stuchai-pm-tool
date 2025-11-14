@@ -30,8 +30,8 @@ import * as z from "zod"
 const actionItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional().nullable(),
-  projectId: z.string().optional().nullable().or(z.literal("")),
-  assignedTo: z.string().optional().nullable().or(z.literal("")),
+  projectId: z.string().optional().nullable().or(z.literal("__none__")),
+  assignedTo: z.string().optional().nullable().or(z.literal("__unassigned__")),
   dueDate: z.string().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 })
@@ -59,7 +59,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
   } = useForm<ActionItemFormData>({
     resolver: zodResolver(actionItemSchema),
     defaultValues: {
-      projectId: projectId || null,
+      projectId: projectId || "__none__",
+      assignedTo: "__unassigned__",
       priority: "MEDIUM",
     },
   })
@@ -152,8 +153,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       reset({
         title: "",
         description: "",
-        projectId: projectId || null,
-        assignedTo: null,
+        projectId: projectId || "__none__",
+        assignedTo: "__unassigned__",
         dueDate: "",
         priority: "MEDIUM",
       })
