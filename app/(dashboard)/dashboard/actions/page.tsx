@@ -50,6 +50,17 @@ async function getActionItems(userId: string, userRole: UserRole) {
           email: true,
         },
       },
+      mentions: {
+        include: {
+          mentionedUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",

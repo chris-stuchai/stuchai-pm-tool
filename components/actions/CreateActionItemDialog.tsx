@@ -78,17 +78,25 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
   const onSubmit = async (data: ActionItemFormData) => {
     setLoading(true)
     try {
+      // Clean up the data - convert empty strings to null
+      const cleanedData = {
+        title: data.title,
+        description: data.description || null,
+        projectId: data.projectId && data.projectId.trim() !== "" ? data.projectId : null,
+        assignedTo: data.assignedTo && data.assignedTo.trim() !== "" ? data.assignedTo : null,
+        dueDate: data.dueDate && data.dueDate.trim() !== "" ? data.dueDate : null,
+        priority: data.priority || "MEDIUM",
+      }
+
       const response = await fetch("/api/action-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          projectId: data.projectId || null,
-        }),
+        body: JSON.stringify(cleanedData),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to create action item")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to create action item")
       }
 
       setOpen(false)
@@ -96,7 +104,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       router.refresh()
     } catch (error) {
       console.error("Error creating action item:", error)
-      alert("Failed to create action item. Please try again.")
+      const errorMessage = error instanceof Error ? error.message : "Failed to create action item. Please try again."
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -143,7 +152,7 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
               <div className="grid gap-2">
                 <Label htmlFor="projectId">Project (Optional)</Label>
                 <Select
-                  onValueChange={(value) => setValue("projectId", value)}
+                  onValueChange={(value) => setValue("projectId", value === "" ? null : value)}
                   value={watch("projectId") || ""}
                 >
                   <SelectTrigger>
@@ -163,7 +172,7 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
             <div className="grid gap-2">
               <Label htmlFor="assignedTo">Assign To (Optional)</Label>
               <Select
-                onValueChange={(value) => setValue("assignedTo", value || null)}
+                onValueChange={(value) => setValue("assignedTo", value === "" ? null : value)}
                 value={watch("assignedTo") || ""}
               >
                 <SelectTrigger>
