@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,23 +11,41 @@ import {
   Bell,
   Settings,
   LogOut,
-  ListTodo
+  ListTodo,
+  Calendar,
+  MessageSquare,
+  FileText
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
+import { UserRole } from "@prisma/client"
 
-const navigation = [
+const adminNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
   { name: "Action Items", href: "/dashboard/actions", icon: CheckSquare },
+  { name: "Meetings", href: "/dashboard/meetings", icon: Calendar },
   { name: "My Tasks", href: "/dashboard/personal-tasks", icon: ListTodo },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
+]
+
+const clientNavigation = [
+  { name: "My Portal", href: "/dashboard", icon: LayoutDashboard },
+  { name: "My Projects", href: "/dashboard/projects", icon: FolderKanban },
+  { name: "My Tasks", href: "/dashboard/actions", icon: CheckSquare },
+  { name: "Meetings", href: "/dashboard/meetings", icon: Calendar },
+  { name: "Documents", href: "/dashboard/documents", icon: FileText },
+  { name: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const isClient = session?.user?.role === UserRole.CLIENT
+  const navigation = isClient ? clientNavigation : adminNavigation
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-white">
