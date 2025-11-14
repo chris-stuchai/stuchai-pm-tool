@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { Prisma, UserRole } from "@prisma/client"
 import {
   Card,
   CardContent,
@@ -22,7 +22,7 @@ async function getProjectsForUser(user: {
   role: UserRole
   email?: string | null
 }) {
-  const baseQuery = {
+  const baseQuery: Prisma.ProjectFindManyArgs = {
     include: {
       client: {
         select: {
