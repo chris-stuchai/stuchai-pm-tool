@@ -25,7 +25,7 @@ interface Meeting {
   } | null
   creator: {
     id: string
-    name: string
+    name: string | null
     email: string
   }
   attendees: Array<{
@@ -34,7 +34,7 @@ interface Meeting {
     status: string | null
     user: {
       id: string
-      name: string
+      name: string | null
       email: string
       image: string | null
     }
