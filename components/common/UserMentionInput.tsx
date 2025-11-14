@@ -22,6 +22,7 @@ interface UserMentionInputProps {
   onChange: (value: string) => void
   onMentionsChange: (userIds: string[]) => void
   placeholder?: string
+  disabled?: boolean
 }
 
 export function UserMentionInput({
@@ -29,6 +30,7 @@ export function UserMentionInput({
   onChange,
   onMentionsChange,
   placeholder = "Type a message...",
+  disabled = false,
 }: UserMentionInputProps) {
   const { data: session } = useSession()
   const [users, setUsers] = useState<User[]>([])
@@ -187,6 +189,7 @@ export function UserMentionInput({
         placeholder={placeholder}
         rows={3}
         className="pr-10"
+        disabled={disabled}
       />
       {showSuggestions && suggestions.length > 0 && (
         <div

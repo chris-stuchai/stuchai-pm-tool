@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
           password: hashedPassword,
           role: invitation.role,
           emailVerified: new Date(),
+          active: true,
         },
       })
 

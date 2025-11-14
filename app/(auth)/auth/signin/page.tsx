@@ -62,10 +62,12 @@ function SignInForm() {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {errorMessage || 
-                  (error === "OAuthAccountNotLinked" 
+                {errorMessage ||
+                  (error === "OAuthAccountNotLinked"
                     ? "This email is already registered. Please sign in with your original method or use email/password."
-                    : "An error occurred during sign in. Please try again.")}
+                    : error === "AccountDisabled"
+                      ? "This account has been deactivated. Please contact an administrator."
+                      : "An error occurred during sign in. Please try again.")}
               </AlertDescription>
             </Alert>
           )}

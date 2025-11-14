@@ -13,6 +13,7 @@ import { EditClientDialogButton } from "@/components/clients/EditClientDialogBut
 import { ClientDocuments } from "@/components/clients/ClientDocuments"
 import { ClientMessages } from "@/components/clients/ClientMessages"
 import { InviteClientButton } from "@/components/clients/InviteClientButton"
+import { ClientStatusToggle } from "@/components/clients/ClientStatusToggle"
 import { UserRole } from "@prisma/client"
 
 async function getClient(id: string) {
@@ -63,6 +64,14 @@ export default async function ClientDetailPage({
 
   return (
     <div className="space-y-6">
+      {!client.active && (
+        <Card>
+          <CardContent className="text-sm text-yellow-700 bg-yellow-50 border-yellow-200">
+            This client is inactive. Reactivate them to resume messaging, project updates, and
+            document sharing.
+          </CardContent>
+        </Card>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
@@ -71,7 +80,12 @@ export default async function ClientDetailPage({
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
+              <Badge variant={client.active ? "secondary" : "destructive"}>
+                {client.active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
             <p className="text-gray-600 mt-1">Client details and projects</p>
           </div>
         </div>
@@ -83,6 +97,7 @@ export default async function ClientDetailPage({
               clientEmail={client.email}
             />
             <EditClientDialogButton client={client} />
+            <ClientStatusToggle clientId={client.id} isActive={client.active} />
           </div>
         )}
       </div>
@@ -154,7 +169,11 @@ export default async function ClientDetailPage({
 
       <div className="grid gap-6 md:grid-cols-2">
         <ClientDocuments clientId={client.id} canEdit={canEdit} />
-        <ClientMessages clientId={client.id} currentUserId={session.user.id} />
+        <ClientMessages
+          clientId={client.id}
+          currentUserId={session.user.id}
+          disabled={!client.active}
+        />
       </div>
     </div>
   )

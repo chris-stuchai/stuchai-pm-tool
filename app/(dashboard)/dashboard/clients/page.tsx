@@ -12,6 +12,9 @@ import { CreateClientDialog } from "@/components/clients/CreateClientDialog"
 
 async function getClients() {
   const clients = await db.client.findMany({
+    where: {
+      active: true,
+    },
     include: {
       creator: {
         select: {

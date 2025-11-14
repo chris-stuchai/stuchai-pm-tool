@@ -11,6 +11,7 @@ async function getClientConversations(userId: string) {
   // Get clients where user has assigned action items
   const clients = await db.client.findMany({
     where: {
+      active: true,
       projects: {
         some: {
           actionItems: {

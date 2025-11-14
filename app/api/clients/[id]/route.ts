@@ -109,8 +109,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    await db.client.delete({
+    await db.client.update({
       where: { id: params.id },
+      data: { active: false },
     })
 
     return NextResponse.json({ success: true })

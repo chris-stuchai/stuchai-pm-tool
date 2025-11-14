@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     }
 
     const clients = await db.client.findMany({
+      where: {
+        active: true,
+      },
       include: {
         creator: {
           select: {

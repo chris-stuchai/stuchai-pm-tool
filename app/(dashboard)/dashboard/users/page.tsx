@@ -20,6 +20,7 @@ async function getUsers() {
       image: true,
       createdAt: true,
       emailVerified: true,
+      active: true,
     },
     orderBy: {
       createdAt: "desc",

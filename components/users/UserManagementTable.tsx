@@ -32,6 +32,7 @@ interface User {
   image: string | null
   createdAt: Date
   emailVerified: Date | null
+  active: boolean
 }
 
 interface UserManagementTableProps {
@@ -69,6 +70,29 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
     }
   }
 
+  const handleStatusChange = async (userId: string, nextStatus: boolean) => {
+    setLoading(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: nextStatus }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to update status")
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error("Error updating status:", error)
+      alert(error instanceof Error ? error.message : "Failed to update status")
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const getRoleBadgeVariant = (role: UserRole) => {
     switch (role) {
       case UserRole.ADMIN:
@@ -92,6 +116,7 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
             <TableHead>Current Role</TableHead>
             <TableHead>Verified</TableHead>
             <TableHead>Joined</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Change Role</TableHead>
           </TableRow>
         </TableHeader>
@@ -126,6 +151,22 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {formatDate(user.createdAt)}
+              </TableCell>
+              <TableCell>
+                <Badge variant={user.active ? "secondary" : "destructive"}>
+                  {user.active ? "Active" : "Inactive"}
+                </Badge>
+                {user.id !== currentUserId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 px-0 text-xs text-muted-foreground"
+                    onClick={() => handleStatusChange(user.id, !user.active)}
+                    disabled={loading === user.id}
+                  >
+                    {user.active ? "Deactivate" : "Activate"}
+                  </Button>
+                )}
               </TableCell>
               <TableCell>
                 {user.id === currentUserId ? (

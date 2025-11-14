@@ -39,6 +39,10 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        if (!user.active) {
+          throw new Error("AccountDisabled")
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -103,6 +107,9 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (existingUser) {
+          if (!existingUser.active) {
+            return "/auth/signin?error=AccountDisabled"
+          }
           // Check if Google account is already linked
           const hasGoogleAccount = existingUser.accounts.some(
             (acc) => acc.provider === "google"

@@ -90,12 +90,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    let finalRecipientId = recipientId || null
+
+    if (!finalRecipientId && clientId) {
+      const client = await db.client.findUnique({
+        where: { id: clientId },
+        select: {
+          email: true,
+          createdBy: true,
+        },
+      })
+
+      if (client) {
+        if (session.user.role === UserRole.CLIENT) {
+          finalRecipientId = client.createdBy
+        } else if (client.email) {
+          const clientUser = await db.user.findFirst({
+            where: {
+              email: client.email.toLowerCase(),
+              active: true,
+            },
+            select: { id: true },
+          })
+          finalRecipientId = clientUser?.id || null
+        }
+      }
+    }
+
     const message = await db.message.create({
       data: {
         content,
         clientId,
         projectId,
-        recipientId,
+        recipientId: finalRecipientId,
         senderId: session.user.id,
         mentions: mentions
           ? {

@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { Edit, Mail, Building2 } from "lucide-react"
 import { EditClientDialog } from "./EditClientDialog"
+import { ClientStatusToggle } from "./ClientStatusToggle"
 import { useState } from "react"
 
 interface Client {
@@ -17,6 +18,7 @@ interface Client {
   phone: string | null
   notes: string | null
   createdAt: Date
+  active: boolean
   projects: Array<{
     id: string
     name: string
@@ -55,20 +57,28 @@ export function ClientList({ clients, canEdit }: ClientListProps) {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{client.name}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{client.name}</CardTitle>
+                    <Badge variant={client.active ? "secondary" : "destructive"}>
+                      {client.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
                   <CardDescription className="flex items-center gap-2 mt-1">
                     <Mail className="h-3 w-3" />
                     {client.email}
                   </CardDescription>
                 </div>
                 {canEdit && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setEditingClient(client)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ClientStatusToggle clientId={client.id} isActive={client.active} />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingClient(client)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardHeader>

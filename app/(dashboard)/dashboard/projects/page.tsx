@@ -63,6 +63,7 @@ async function getProjectsForUser(user: {
   const client = await db.client.findFirst({
     where: {
       email: user.email.toLowerCase(),
+      active: true,
     },
     select: {
       id: true,

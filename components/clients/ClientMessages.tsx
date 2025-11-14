@@ -37,9 +37,10 @@ interface Message {
 interface ClientMessagesProps {
   clientId: string
   currentUserId: string
+  disabled?: boolean
 }
 
-export function ClientMessages({ clientId, currentUserId }: ClientMessagesProps) {
+export function ClientMessages({ clientId, currentUserId, disabled }: ClientMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(true)
@@ -192,9 +193,14 @@ export function ClientMessages({ clientId, currentUserId }: ClientMessagesProps)
             value={content}
             onChange={setContent}
             onMentionsChange={setMentionedUserIds}
-            placeholder="Type a message... Use @ to mention someone"
+            placeholder={
+              disabled
+                ? "Messaging disabled while this client is inactive"
+                : "Type a message... Use @ to mention someone"
+            }
+            disabled={disabled}
           />
-          <Button type="submit" disabled={sending || !content.trim()}>
+          <Button type="submit" disabled={disabled || sending || !content.trim()}>
             <Send className="mr-2 h-4 w-4" />
             {sending ? "Sending..." : "Send"}
           </Button>
