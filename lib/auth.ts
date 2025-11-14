@@ -88,7 +88,40 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async signIn({ user, account, profile }) {
-      // Let the adapter handle OAuth account creation and linking
+      if (account?.provider === "google") {
+        // Check if user exists with this email
+        const existingUser = await db.user.findUnique({
+          where: { email: user.email! },
+          include: { accounts: true },
+        })
+
+        if (existingUser) {
+          // Check if Google account is already linked
+          const hasGoogleAccount = existingUser.accounts.some(
+            (acc) => acc.provider === "google"
+          )
+          
+          if (!hasGoogleAccount) {
+            // Link the Google account
+            await db.account.create({
+              data: {
+                userId: existingUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+                session_state: account.session_state,
+              },
+            })
+          }
+        }
+      }
+      // Let the adapter handle new user creation
       return true
     },
   },
