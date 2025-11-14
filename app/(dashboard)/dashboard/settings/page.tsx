@@ -66,7 +66,7 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <EditableProfile
-              name={session.user.name}
+              name={session.user.name ?? null}
               email={session.user.email!}
               role={session.user.role}
             />
