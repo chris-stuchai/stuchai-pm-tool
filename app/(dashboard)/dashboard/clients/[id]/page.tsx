@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { ArrowLeft, Mail, Building2, Phone, FileText } from "lucide-react"
 import { EditClientDialogButton } from "@/components/clients/EditClientDialogButton"
+import { ClientDocuments } from "@/components/clients/ClientDocuments"
 import { UserRole } from "@prisma/client"
 
 async function getClient(id: string) {
@@ -139,6 +140,8 @@ export default async function ClientDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <ClientDocuments clientId={client.id} canEdit={canEdit} />
     </div>
   )
 }
