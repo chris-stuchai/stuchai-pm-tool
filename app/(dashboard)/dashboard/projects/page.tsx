@@ -17,45 +17,47 @@ import Link from "next/link"
 import { formatDate } from "@/lib/utils"
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog"
 
+const projectQuery = Prisma.validator<Prisma.ProjectFindManyArgs>()({
+  include: {
+    client: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    },
+    creator: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    },
+    actionItems: {
+      select: {
+        id: true,
+        status: true,
+      },
+    },
+  },
+  orderBy: {
+    updatedAt: "desc",
+  },
+})
+
+type ProjectWithRelations = Prisma.ProjectGetPayload<typeof projectQuery>
+
 async function getProjectsForUser(user: {
   id: string
   role: UserRole
   email?: string | null
-}) {
-  const baseQuery: Prisma.ProjectFindManyArgs = {
-    include: {
-      client: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      actionItems: {
-        select: {
-          id: true,
-          status: true,
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-  }
-
+}): Promise<ProjectWithRelations[]> {
   if (user.role !== UserRole.CLIENT) {
-    return db.project.findMany(baseQuery)
+    return db.project.findMany(projectQuery)
   }
 
   if (!user.email) {
-    return []
+    return [] as ProjectWithRelations[]
   }
 
   const client = await db.client.findFirst({
@@ -68,14 +70,14 @@ async function getProjectsForUser(user: {
   })
 
   if (!client) {
-    return []
+    return [] as ProjectWithRelations[]
   }
 
   return db.project.findMany({
     where: {
       clientId: client.id,
     },
-    ...baseQuery,
+    ...projectQuery,
   })
 }
 
