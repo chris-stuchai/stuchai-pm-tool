@@ -50,13 +50,9 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-white">
-      <div className="flex h-16 items-center gap-3 border-b px-6">
-        <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <div className="flex h-16 items-center border-b px-6">
+        <Link href="/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
           <Logo />
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">StuchAI</h1>
-            <p className="text-[10px] text-gray-500 leading-tight">Simplifying tech for all.</p>
-          </div>
         </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">

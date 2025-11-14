@@ -7,13 +7,14 @@ export function Logo() {
   const [imageError, setImageError] = useState(false)
 
   return (
-    <div className="relative h-10 w-10 flex-shrink-0">
+    <div className="relative h-10 w-auto flex-shrink-0">
       {!imageError ? (
         <Image
           src="/logo.png"
           alt="StuchAI Logo"
-          fill
-          className="object-contain"
+          width={120}
+          height={30}
+          className="object-contain h-full w-auto"
           priority
           onError={() => setImageError(true)}
         />
