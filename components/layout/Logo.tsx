@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useState } from "react"
 
 export function Logo() {
@@ -9,13 +8,12 @@ export function Logo() {
   return (
     <div className="relative h-10 w-auto flex-shrink-0">
       {!imageError ? (
-        <Image
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
           src="/logo.png"
           alt="StuchAI Logo"
-          width={120}
-          height={30}
-          className="object-contain h-full w-auto"
-          priority
+          className="h-full w-auto object-contain"
+          style={{ maxHeight: "40px", width: "auto" }}
           onError={() => setImageError(true)}
         />
       ) : (
