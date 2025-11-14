@@ -280,7 +280,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {data.upcomingMeetings.length === 0 ? (
+                {!data.upcomingMeetings || data.upcomingMeetings.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No upcoming meetings</p>
                 ) : (
                   data.upcomingMeetings.map((meeting) => (
@@ -310,7 +310,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {data.myActionItems.length === 0 ? (
+                {!data.myActionItems || data.myActionItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No tasks assigned</p>
                 ) : (
                   data.myActionItems.map((item) => (
