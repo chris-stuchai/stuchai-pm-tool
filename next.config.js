@@ -3,8 +3,6 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
-  // Output standalone for better Railway compatibility
-  output: 'standalone',
   async headers() {
     return [
       {
