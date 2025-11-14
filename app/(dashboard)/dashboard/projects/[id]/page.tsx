@@ -35,6 +35,15 @@ async function getProject(id: string) {
               image: true,
             },
           },
+          project: {
+            include: {
+              client: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",
