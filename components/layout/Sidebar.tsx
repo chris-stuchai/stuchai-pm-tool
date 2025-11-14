@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
 import { UserRole } from "@prisma/client"
+import { Logo } from "./Logo"
 
 const adminNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -50,16 +51,13 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col border-r bg-white">
       <div className="flex h-16 items-center gap-3 border-b px-6">
-        <div className="flex items-center gap-3">
-          {/* Logo - Blue circle with white S */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
-            <span className="text-xl font-bold text-white">S</span>
-          </div>
+        <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Logo />
           <div className="flex flex-col">
             <h1 className="text-lg font-bold text-gray-900 leading-tight">StuchAI</h1>
             <p className="text-[10px] text-gray-500 leading-tight">Simplifying tech for all.</p>
           </div>
-        </div>
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
