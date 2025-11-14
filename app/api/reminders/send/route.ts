@@ -106,8 +106,16 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // If error message already contains the reconnect instruction, use it
+    if (error.message?.includes("reconnect")) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: error.message || "Failed to send reminder. Please ensure Gmail is connected." },
+      { error: error.message || "Failed to send reminder. Please reconnect your Google account in Settings to enable Gmail." },
       { status: 500 }
     )
   }
