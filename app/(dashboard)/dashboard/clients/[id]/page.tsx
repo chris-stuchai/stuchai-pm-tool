@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { ArrowLeft, Mail, Building2, Phone, FileText } from "lucide-react"
-import { EditClientDialog } from "@/components/clients/EditClientDialog"
+import { EditClientDialogButton } from "@/components/clients/EditClientDialogButton"
 import { UserRole } from "@prisma/client"
 
 async function getClient(id: string) {
@@ -72,7 +72,7 @@ export default async function ClientDetailPage({
             <p className="text-gray-600 mt-1">Client details and projects</p>
           </div>
         </div>
-        {canEdit && <EditClientDialog client={client} open={false} onOpenChange={() => {}} />}
+        {canEdit && <EditClientDialogButton client={client} />}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

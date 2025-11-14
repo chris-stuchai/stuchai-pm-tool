@@ -46,6 +46,9 @@ enum NotificationType {
   PROJECT_UPDATED
   CLIENT_ADDED
   REMINDER
+  MENTIONED
+  MESSAGE_RECEIVED
+  DOCUMENT_UPLOADED
 }
 
 model User {
@@ -67,8 +70,13 @@ model User {
   createdProjects    Project[]             @relation("ProjectCreator")
   createdActionItems ActionItem[]          @relation("ActionItemCreator")
   assignedActionItems ActionItem[]         @relation("ActionItemAssignee")
+  personalTasks      PersonalTask[]
   notifications      Notification[]
   uploadedDocuments  Document[]
+  uploadedClientDocuments ClientDocument[] @relation("ClientDocumentUploader")
+  sentMessages       Message[]             @relation("MessageSender")
+  receivedMessages   Message[]             @relation("MessageRecipient")
+  mentions           Mention[]
 
   @@map("users")
 }
@@ -124,8 +132,10 @@ model Client {
   createdBy String
 
   // Relations
-  creator User      @relation("ClientCreator", fields: [createdBy], references: [id])
-  projects Project[]
+  creator   User      @relation("ClientCreator", fields: [createdBy], references: [id])
+  projects  Project[]
+  documents ClientDocument[]
+  messages  Message[]
 
   @@map("clients")
 }
@@ -150,6 +160,7 @@ model Project {
   actionItems  ActionItem[]
   documents    Document[]
   milestones   Milestone[]
+  messages     Message[]
 
   @@map("projects")
 }
@@ -188,6 +199,7 @@ model ActionItem {
   assignee    User?           @relation("ActionItemAssignee", fields: [assignedTo], references: [id])
   creator     User            @relation("ActionItemCreator", fields: [createdBy], references: [id])
   notifications Notification[]
+  mentions   Mention[]
 
   @@map("action_items")
 }
@@ -225,5 +237,79 @@ model Document {
   uploader User     @relation(fields: [uploadedBy], references: [id])
 
   @@map("documents")
+}
+
+model ClientDocument {
+  id            String   @id @default(cuid())
+  name          String
+  googleDriveId String?
+  url           String?
+  mimeType      String?
+  size          Int?
+  type          String?  // e.g., "contract", "proposal", "invoice"
+  clientId      String
+  uploadedBy    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploader  User   @relation("ClientDocumentUploader", fields: [uploadedBy], references: [id])
+
+  @@map("client_documents")
+}
+
+model PersonalTask {
+  id          String          @id @default(cuid())
+  title       String
+  description String?         @db.Text
+  status      ActionItemStatus @default(PENDING)
+  priority    Priority        @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  userId      String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("personal_tasks")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content  String   @db.Text
+  clientId String?
+  projectId String?
+  senderId  String
+  recipientId String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id])
+  recipient User?    @relation("MessageRecipient", fields: [recipientId], references: [id])
+  mentions  Mention[]
+
+  @@map("messages")
+}
+
+model Mention {
+  id          String   @id @default(cuid())
+  messageId   String?
+  actionItemId String?
+  mentionedUserId String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  message     Message?    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  actionItem  ActionItem? @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  mentionedUser User     @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@map("mentions")
 }
 
