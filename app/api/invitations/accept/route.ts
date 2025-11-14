@@ -6,6 +6,8 @@ import bcrypt from "bcryptjs"
 /**
  * Accept invitation and create user account
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -25,29 +27,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate invitation
-    const invitation: any = await db.$queryRaw`
-      SELECT ci.*, c.email, c.id as client_id
-      FROM client_invitations ci
-      JOIN clients c ON ci.client_id = c.id
-      WHERE ci.token = ${token}
-        AND ci.used = false
-        AND ci.expires_at > NOW()
-      LIMIT 1
-    `
+    // Validate invitation using Prisma
+    const invitation = await db.clientInvitation.findUnique({
+      where: { token },
+      include: {
+        client: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    })
 
-    if (!invitation || invitation.length === 0) {
+    if (!invitation || invitation.used || invitation.expiresAt < new Date()) {
       return NextResponse.json(
         { error: "Invalid or expired invitation" },
         { status: 400 }
       )
     }
 
-    const inv = invitation[0]
-
     // Check if user already exists
     const existingUser = await db.user.findUnique({
-      where: { email: inv.email },
+      where: { email: invitation.client.email },
     })
 
     if (existingUser) {
@@ -60,28 +61,30 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user account
-    const user = await db.user.create({
-      data: {
-        email: inv.email,
-        name: name.trim(),
-        password: hashedPassword,
-        role: UserRole.CLIENT,
-        emailVerified: new Date(),
-      },
-    })
+    // Create user account and mark invitation as used in a transaction
+    const result = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: invitation.client.email,
+          name: name.trim(),
+          password: hashedPassword,
+          role: UserRole.CLIENT,
+          emailVerified: new Date(),
+        },
+      })
 
-    // Mark invitation as used
-    await db.$executeRaw`
-      UPDATE client_invitations
-      SET used = true
-      WHERE token = ${token}
-    `
+      await tx.clientInvitation.update({
+        where: { id: invitation.id },
+        data: { used: true },
+      })
+
+      return user
+    })
 
     return NextResponse.json({
       success: true,
       message: "Account created successfully",
-      userId: user.id,
+      userId: result.id,
     })
   } catch (error) {
     console.error("Error accepting invitation:", error)

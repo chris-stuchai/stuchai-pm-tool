@@ -8,6 +8,8 @@ import crypto from "crypto"
 /**
  * Send invitation email to client
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -56,13 +58,20 @@ export async function POST(
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
 
-    // Store invitation token (we'll create a table for this)
-    await db.$executeRaw`
-      INSERT INTO client_invitations (id, client_id, token, expires_at, created_at)
-      VALUES (gen_random_uuid(), ${client.id}, ${token}, ${expiresAt}, NOW())
-      ON CONFLICT (client_id) 
-      DO UPDATE SET token = ${token}, expires_at = ${expiresAt}, created_at = NOW()
-    `
+    // Store invitation token using Prisma
+    await db.clientInvitation.upsert({
+      where: { clientId: client.id },
+      create: {
+        clientId: client.id,
+        token,
+        expiresAt,
+      },
+      update: {
+        token,
+        expiresAt,
+        used: false,
+      },
+    })
 
     // Build invitation URL
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"

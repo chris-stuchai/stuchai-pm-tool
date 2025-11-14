@@ -148,6 +148,7 @@ model Client {
   documents ClientDocument[]
   messages  Message[]
   meetings  Meeting[]
+  invitation ClientInvitation?
 
   @@map("clients")
 }
@@ -363,5 +364,19 @@ model MeetingAttendee {
 
   @@unique([meetingId, userId])
   @@map("meeting_attendees")
+}
+
+model ClientInvitation {
+  id        String   @id @default(cuid())
+  clientId  String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_invitations")
 }
 
