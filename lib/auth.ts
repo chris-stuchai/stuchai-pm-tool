@@ -52,24 +52,26 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user, token }) {
-      if (session.user) {
-        // For database sessions, use user from adapter
-        if (user) {
-          session.user.id = user.id
-          session.user.role = (user as any).role || UserRole.CLIENT
-        } else if (token) {
-          // For JWT sessions (credentials)
-          session.user.id = token.id as string
-          session.user.role = (token.role as UserRole) || UserRole.CLIENT
-        }
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string
+        session.user.role = (token.role as UserRole) || UserRole.CLIENT
       }
       return session
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        token.role = (user as any).role
+        // Get role from database if not in token
+        if (!token.role) {
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
+          })
+          token.role = dbUser?.role || UserRole.CLIENT
+        } else {
+          token.role = (user as any).role || UserRole.CLIENT
+        }
       }
       return token
     },
