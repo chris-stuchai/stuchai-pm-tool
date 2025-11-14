@@ -66,14 +66,37 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch("/api/projects").then((res) => res.json()),
-        fetch("/api/users").then((res) => res.json()).catch(() => []),
+        fetch("/api/projects")
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to fetch projects")
+            return res.json()
+          })
+          .catch((error) => {
+            console.error("Error fetching projects:", error)
+            return []
+          }),
+        fetch("/api/users")
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to fetch users")
+            return res.json()
+          })
+          .catch((error) => {
+            console.error("Error fetching users:", error)
+            return []
+          }),
       ]).then(([projectsData, usersData]) => {
-        setProjects(projectsData)
-        setUsers(usersData)
-      }).catch(console.error)
+        setProjects(Array.isArray(projectsData) ? projectsData : [])
+        setUsers(Array.isArray(usersData) ? usersData : [])
+      }).catch((error) => {
+        console.error("Error loading form data:", error)
+        setProjects([])
+        setUsers([])
+      })
+    } else {
+      // Reset form when dialog closes
+      reset()
     }
-  }, [open])
+  }, [open, reset])
 
   const onSubmit = async (data: ActionItemFormData) => {
     setLoading(true)
