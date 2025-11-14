@@ -49,6 +49,15 @@ enum NotificationType {
   MENTIONED
   MESSAGE_RECEIVED
   DOCUMENT_UPLOADED
+  MEETING_SCHEDULED
+  MEETING_REMINDER
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 model User {
@@ -77,6 +86,8 @@ model User {
   sentMessages       Message[]             @relation("MessageSender")
   receivedMessages   Message[]             @relation("MessageRecipient")
   mentions           Mention[]
+  createdMeetings    Meeting[]             @relation("MeetingCreator")
+  meetingAttendees   MeetingAttendee[]
 
   @@map("users")
 }
@@ -136,6 +147,7 @@ model Client {
   projects  Project[]
   documents ClientDocument[]
   messages  Message[]
+  meetings  Meeting[]
 
   @@map("clients")
 }
@@ -161,6 +173,7 @@ model Project {
   documents    Document[]
   milestones   Milestone[]
   messages     Message[]
+  meetings     Meeting[]
 
   @@map("projects")
 }
@@ -311,5 +324,44 @@ model Mention {
   mentionedUser User     @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
 
   @@map("mentions")
+}
+
+model Meeting {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?        @db.Text
+  startTime     DateTime
+  endTime       DateTime
+  location      String?        // Physical location or Google Meet link
+  googleEventId String?        // Google Calendar event ID
+  status        MeetingStatus  @default(SCHEDULED)
+  clientId      String?
+  projectId     String?
+  createdBy     String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  client       Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project      Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator      User            @relation("MeetingCreator", fields: [createdBy], references: [id])
+  attendees    MeetingAttendee[]
+
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  status    String?  // "accepted", "declined", "tentative", "needsAction"
+  createdAt DateTime @default(now())
+
+  // Relations
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@map("meeting_attendees")
 }
 
