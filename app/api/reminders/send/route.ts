@@ -58,22 +58,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email reminder
-    await sendActionItemReminder(
-      session.user.id,
-      {
-        title: actionItem.title,
-        description: actionItem.description,
-        dueDate: actionItem.dueDate,
-        priority: actionItem.priority,
-        project: actionItem.project
-          ? {
-              name: actionItem.project.name,
-              client: { name: actionItem.project.client.name },
-            }
-          : null,
-      },
-      actionItem.assignee.email
-    )
+    try {
+      await sendActionItemReminder(
+        session.user.id,
+        {
+          title: actionItem.title,
+          description: actionItem.description,
+          dueDate: actionItem.dueDate,
+          priority: actionItem.priority,
+          project: actionItem.project
+            ? {
+                name: actionItem.project.name,
+                client: { name: actionItem.project.client.name },
+              }
+            : null,
+        },
+        actionItem.assignee.email
+      )
+    } catch (emailError: any) {
+      // Check if it's a Gmail permission error
+      if (emailError?.code === 403 || emailError?.message?.includes("Insufficient Permission") || emailError?.message?.includes("insufficient_scope")) {
+        throw new Error("Gmail permission required. Please reconnect your Google account in Settings to enable email reminders.")
+      }
+      // Re-throw other errors
+      throw emailError
+    }
 
     // Create notification
     await db.notification.create({
