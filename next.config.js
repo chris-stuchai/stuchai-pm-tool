@@ -3,11 +3,6 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
-  // Ensure Next.js binds to 0.0.0.0 for Railway
-  server: {
-    hostname: '0.0.0.0',
-    port: process.env.PORT || 3000,
-  },
   async headers() {
     return [
       {
