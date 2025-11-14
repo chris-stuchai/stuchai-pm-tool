@@ -11,6 +11,7 @@ import Link from "next/link"
 import { ArrowLeft, Mail, Building2, Phone, FileText } from "lucide-react"
 import { EditClientDialogButton } from "@/components/clients/EditClientDialogButton"
 import { ClientDocuments } from "@/components/clients/ClientDocuments"
+import { ClientMessages } from "@/components/clients/ClientMessages"
 import { UserRole } from "@prisma/client"
 
 async function getClient(id: string) {
@@ -141,7 +142,10 @@ export default async function ClientDetailPage({
         </Card>
       </div>
 
-      <ClientDocuments clientId={client.id} canEdit={canEdit} />
+      <div className="grid gap-6 md:grid-cols-2">
+        <ClientDocuments clientId={client.id} canEdit={canEdit} />
+        <ClientMessages clientId={client.id} currentUserId={session.user.id} />
+      </div>
     </div>
   )
 }

@@ -63,6 +63,17 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
+        mentions: {
+          include: {
+            mentionedUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -92,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, projectId, assignedTo, dueDate, priority } = body
+    const { title, description, projectId, assignedTo, dueDate, priority, mentions } = body
 
     if (!title) {
       return NextResponse.json(
@@ -110,6 +121,13 @@ export async function POST(request: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : null,
         priority: priority || Priority.MEDIUM,
         createdBy: session.user.id,
+        mentions: mentions && mentions.length > 0
+          ? {
+              create: mentions.map((userId: string) => ({
+                mentionedUserId: userId,
+              })),
+            }
+          : undefined,
       },
       include: {
         project: {
@@ -137,6 +155,17 @@ export async function POST(request: NextRequest) {
             email: true,
           },
         },
+        mentions: {
+          include: {
+            mentionedUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     })
 
@@ -149,6 +178,20 @@ export async function POST(request: NextRequest) {
           userId: assignedTo,
           actionItemId: actionItem.id,
         },
+      })
+    }
+
+    // Create notifications for mentioned users
+    if (mentions && mentions.length > 0) {
+      await db.notification.createMany({
+        data: mentions
+          .filter((userId: string) => userId !== assignedTo && userId !== session.user.id)
+          .map((userId: string) => ({
+            type: "MENTIONED",
+            message: `${session.user.name || session.user.email} mentioned you in: ${title}`,
+            userId,
+            actionItemId: actionItem.id,
+          })),
       })
     }
 
