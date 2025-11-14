@@ -12,6 +12,7 @@ import { ArrowLeft, Mail, Building2, Phone, FileText } from "lucide-react"
 import { EditClientDialogButton } from "@/components/clients/EditClientDialogButton"
 import { ClientDocuments } from "@/components/clients/ClientDocuments"
 import { ClientMessages } from "@/components/clients/ClientMessages"
+import { InviteClientButton } from "@/components/clients/InviteClientButton"
 import { UserRole } from "@prisma/client"
 
 async function getClient(id: string) {
@@ -74,7 +75,16 @@ export default async function ClientDetailPage({
             <p className="text-gray-600 mt-1">Client details and projects</p>
           </div>
         </div>
-        {canEdit && <EditClientDialogButton client={client} />}
+        {canEdit && (
+          <div className="flex gap-2">
+            <InviteClientButton 
+              clientId={client.id}
+              clientName={client.name}
+              clientEmail={client.email}
+            />
+            <EditClientDialogButton client={client} />
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

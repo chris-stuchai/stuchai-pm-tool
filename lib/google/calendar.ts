@@ -29,18 +29,30 @@ export async function getCalendarClient(userId: string) {
 
   // Refresh token if needed
   if (account.expires_at && account.expires_at * 1000 < Date.now()) {
-    const { credentials } = await oauth2Client.refreshAccessToken()
+    if (!account.refresh_token) {
+      throw new Error("No refresh token is set. Please reconnect your Google account in Settings to enable Calendar access.")
+    }
     
-    await db.account.update({
-      where: { id: account.id },
-      data: {
-        access_token: credentials.access_token,
-        refresh_token: credentials.refresh_token || account.refresh_token,
-        expires_at: credentials.expiry_date ? Math.floor(credentials.expiry_date / 1000) : null,
-      },
-    })
+    try {
+      const { credentials } = await oauth2Client.refreshAccessToken()
+      
+      await db.account.update({
+        where: { id: account.id },
+        data: {
+          access_token: credentials.access_token,
+          refresh_token: credentials.refresh_token || account.refresh_token,
+          expires_at: credentials.expiry_date ? Math.floor(credentials.expiry_date / 1000) : null,
+        },
+      })
 
-    oauth2Client.setCredentials(credentials)
+      oauth2Client.setCredentials(credentials)
+    } catch (refreshError: any) {
+      // If refresh fails, provide helpful error message
+      if (refreshError?.message?.includes("refresh_token") || refreshError?.message?.includes("invalid_grant")) {
+        throw new Error("Google account connection expired. Please reconnect your Google account in Settings to enable Calendar access.")
+      }
+      throw refreshError
+    }
   }
 
   return google.calendar({ version: "v3", auth: oauth2Client })
@@ -92,8 +104,11 @@ export async function createCalendarEvent(
     })
 
     return response.data
-  } catch (error) {
-    console.error("Error creating calendar event:", error)
+  } catch (error: any) {
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token")) {
+      console.error("Error creating calendar event:", error)
+    }
     throw error
   }
 }
@@ -144,8 +159,11 @@ export async function updateCalendarEvent(
     })
 
     return response.data
-  } catch (error) {
-    console.error("Error updating calendar event:", error)
+  } catch (error: any) {
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token")) {
+      console.error("Error updating calendar event:", error)
+    }
     throw error
   }
 }
@@ -164,8 +182,11 @@ export async function deleteCalendarEvent(userId: string, eventId: string) {
     })
 
     return true
-  } catch (error) {
-    console.error("Error deleting calendar event:", error)
+  } catch (error: any) {
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token")) {
+      console.error("Error deleting calendar event:", error)
+    }
     throw error
   }
 }
@@ -186,8 +207,11 @@ export async function listUpcomingEvents(userId: string, maxResults: number = 10
     })
 
     return response.data.items || []
-  } catch (error) {
-    console.error("Error listing calendar events:", error)
+  } catch (error: any) {
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token")) {
+      console.error("Error listing calendar events:", error)
+    }
     throw error
   }
 }

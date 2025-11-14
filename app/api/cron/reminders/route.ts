@@ -28,3 +28,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Ensure this route is dynamic (not statically generated)
+export const dynamic = 'force-dynamic'
+

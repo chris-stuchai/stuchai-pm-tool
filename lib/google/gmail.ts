@@ -29,18 +29,30 @@ export async function getGmailClient(userId: string) {
 
   // Refresh token if needed
   if (account.expires_at && account.expires_at * 1000 < Date.now()) {
-    const { credentials } = await oauth2Client.refreshAccessToken()
+    if (!account.refresh_token) {
+      throw new Error("No refresh token is set. Please reconnect your Google account in Settings to enable Gmail access.")
+    }
     
-    await db.account.update({
-      where: { id: account.id },
-      data: {
-        access_token: credentials.access_token,
-        refresh_token: credentials.refresh_token || account.refresh_token,
-        expires_at: credentials.expiry_date ? Math.floor(credentials.expiry_date / 1000) : null,
-      },
-    })
+    try {
+      const { credentials } = await oauth2Client.refreshAccessToken()
+      
+      await db.account.update({
+        where: { id: account.id },
+        data: {
+          access_token: credentials.access_token,
+          refresh_token: credentials.refresh_token || account.refresh_token,
+          expires_at: credentials.expiry_date ? Math.floor(credentials.expiry_date / 1000) : null,
+        },
+      })
 
-    oauth2Client.setCredentials(credentials)
+      oauth2Client.setCredentials(credentials)
+    } catch (refreshError: any) {
+      // If refresh fails, provide helpful error message
+      if (refreshError?.message?.includes("refresh_token") || refreshError?.message?.includes("invalid_grant")) {
+        throw new Error("Google account connection expired. Please reconnect your Google account in Settings to enable Gmail access.")
+      }
+      throw refreshError
+    }
   }
 
   return google.gmail({ version: "v1", auth: oauth2Client })
@@ -81,8 +93,11 @@ export async function sendEmail(
     })
 
     return response.data
-  } catch (error) {
-    console.error("Error sending email:", error)
+  } catch (error: any) {
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token")) {
+      console.error("Error sending email:", error)
+    }
     throw error
   }
 }

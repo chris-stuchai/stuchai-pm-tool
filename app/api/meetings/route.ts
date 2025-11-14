@@ -155,8 +155,11 @@ export async function POST(request: NextRequest) {
         })
 
         googleEventId = calendarEvent.id || null
-      } catch (error) {
-        console.error("Error syncing to Google Calendar:", error)
+      } catch (error: any) {
+        // Only log unexpected errors, not user-actionable ones
+        if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token") && !error?.message?.includes("No refresh token")) {
+          console.error("Error syncing to Google Calendar:", error)
+        }
         // Continue with meeting creation even if calendar sync fails
       }
     }

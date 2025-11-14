@@ -96,7 +96,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Error sending reminder:", error)
+    // Only log unexpected errors, not user-actionable ones
+    if (!error?.message?.includes("reconnect") && !error?.message?.includes("refresh token") && !error?.message?.includes("No refresh token")) {
+      console.error("Error sending reminder:", error)
+    }
     
     // Check if it's a Gmail permission error
     if (error?.code === 403 || error?.message?.includes("Insufficient Permission") || error?.message?.includes("insufficient_scope")) {
@@ -107,9 +110,9 @@ export async function POST(request: NextRequest) {
     }
     
     // If error message already contains the reconnect instruction, use it
-    if (error.message?.includes("reconnect")) {
+    if (error.message?.includes("reconnect") || error.message?.includes("refresh token") || error.message?.includes("No refresh token")) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message || "Please reconnect your Google account in Settings to enable Gmail." },
         { status: 403 }
       )
     }
