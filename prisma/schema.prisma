@@ -53,6 +53,7 @@ model User {
   email         String    @unique
   name          String?
   image         String?
+  password      String?   // For email/password auth
   role          UserRole  @default(CLIENT)
   googleId      String?   @unique
   emailVerified DateTime?
