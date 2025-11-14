@@ -20,6 +20,13 @@ interface ActionItem {
     email: string
     image: string | null
   } | null
+  project: {
+    id: string
+    name: string
+    client: {
+      name: string
+    }
+  } | null
 }
 
 interface ProjectActionItemsProps {
