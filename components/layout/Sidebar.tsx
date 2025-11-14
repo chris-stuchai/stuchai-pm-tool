@@ -14,7 +14,8 @@ import {
   ListTodo,
   Calendar,
   MessageSquare,
-  FileText
+  FileText,
+  UserCog
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ const adminNavigation = [
   { name: "Action Items", href: "/dashboard/actions", icon: CheckSquare },
   { name: "Meetings", href: "/dashboard/meetings", icon: Calendar },
   { name: "My Tasks", href: "/dashboard/personal-tasks", icon: ListTodo },
+  { name: "User Management", href: "/dashboard/users", icon: UserCog },
   { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
 ]
 
