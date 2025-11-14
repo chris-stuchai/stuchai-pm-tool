@@ -6,9 +6,145 @@ import { Progress } from "@/components/ui/progress"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Users, FolderKanban, CheckSquare, AlertCircle } from "lucide-react"
+import { ArrowRight, Users, FolderKanban, CheckSquare, AlertCircle, Calendar, FileText, MessageSquare } from "lucide-react"
+import { UserRole } from "@prisma/client"
 
-async function getDashboardData(userId: string) {
+async function getDashboardData(userId: string, role: UserRole) {
+  if (role === UserRole.CLIENT) {
+    // Client view
+    const [actionItems, overdueItems, upcomingMeetings, recentDocuments] = await Promise.all([
+      db.actionItem.count({
+        where: {
+          assignedTo: userId,
+        },
+      }),
+      db.actionItem.count({
+        where: {
+          assignedTo: userId,
+          status: {
+            not: "COMPLETED",
+          },
+          dueDate: {
+            lt: new Date(),
+          },
+        },
+      }),
+      db.meeting.findMany({
+        where: {
+          attendees: {
+            some: {
+              userId,
+            },
+          },
+          startTime: {
+            gte: new Date(),
+          },
+        },
+        take: 5,
+        orderBy: { startTime: "asc" },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      db.clientDocument.findMany({
+        where: {
+          client: {
+            projects: {
+              some: {
+                actionItems: {
+                  some: {
+                    assignedTo: userId,
+                  },
+                },
+              },
+            },
+          },
+        },
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          uploader: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+    ])
+
+    const myProjects = await db.project.findMany({
+      where: {
+        actionItems: {
+          some: {
+            assignedTo: userId,
+          },
+        },
+      },
+      include: {
+        client: true,
+        actionItems: {
+          where: {
+            assignedTo: userId,
+            status: {
+              not: "COMPLETED",
+            },
+          },
+        },
+      },
+    })
+
+    const myActionItems = await db.actionItem.findMany({
+      where: {
+        assignedTo: userId,
+        status: {
+          not: "COMPLETED",
+        },
+      },
+      take: 5,
+      orderBy: { dueDate: "asc" },
+      include: {
+        project: {
+          include: {
+            client: true,
+          },
+        },
+      },
+    })
+
+    return {
+      isClient: true,
+      stats: {
+        actionItems,
+        overdueItems,
+        meetings: upcomingMeetings.length,
+        documents: recentDocuments.length,
+      },
+      upcomingMeetings,
+      recentDocuments,
+      myProjects,
+      myActionItems,
+    }
+  }
+
+  // Admin/Manager view
   const [clients, projects, actionItems, overdueItems] = await Promise.all([
     db.client.count(),
     db.project.count(),
@@ -67,6 +203,7 @@ async function getDashboardData(userId: string) {
   })
 
   return {
+    isClient: false,
     stats: {
       clients,
       projects,
@@ -82,7 +219,124 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
 
-  const data = await getDashboardData(session.user.id)
+  const data = await getDashboardData(session.user.id, session.user.role)
+
+  if (data.isClient) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Portal</h1>
+          <p className="text-gray-600 mt-1">Welcome back, {session.user.name}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
+              <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.stats.actionItems}</div>
+              <p className="text-xs text-muted-foreground">Assigned to me</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{data.stats.overdueItems}</div>
+              <p className="text-xs text-muted-foreground">Requires attention</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upcoming Meetings</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.stats.meetings}</div>
+              <p className="text-xs text-muted-foreground">Scheduled</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Documents</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.stats.documents}</div>
+              <p className="text-xs text-muted-foreground">Shared with me</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Meetings</CardTitle>
+              <CardDescription>Your scheduled meetings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {data.upcomingMeetings.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No upcoming meetings</p>
+                ) : (
+                  data.upcomingMeetings.map((meeting) => (
+                    <div key={meeting.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{meeting.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(meeting.startTime)} • {meeting.client?.name || meeting.project?.name || ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <Button variant="ghost" className="w-full mt-4" asChild>
+                <Link href="/dashboard/meetings">
+                  View all meetings <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>My Tasks</CardTitle>
+              <CardDescription>Tasks assigned to you</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {data.myActionItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tasks assigned</p>
+                ) : (
+                  data.myActionItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.project ? `${item.project.name} • ` : ""}
+                          {item.dueDate ? `Due ${formatDate(item.dueDate)}` : "No due date"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <Button variant="ghost" className="w-full mt-4" asChild>
+                <Link href="/dashboard/actions">
+                  View all tasks <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
