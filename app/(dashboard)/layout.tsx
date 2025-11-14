@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { DashboardLayout } from "@/components/layout/DashboardLayout"
 import { SessionProvider } from "@/components/providers/SessionProvider"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export default async function DashboardLayoutWrapper({
   children,
@@ -17,7 +18,9 @@ export default async function DashboardLayoutWrapper({
 
   return (
     <SessionProvider session={session}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <ErrorBoundary>
+        <DashboardLayout>{children}</DashboardLayout>
+      </ErrorBoundary>
     </SessionProvider>
   )
 }

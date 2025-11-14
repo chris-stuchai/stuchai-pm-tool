@@ -49,6 +49,7 @@ export function ClientDocuments({ clientId, canEdit }: ClientDocumentsProps) {
 
   useEffect(() => {
     fetchDocuments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
 
   const handleDelete = async (id: string) => {

@@ -41,6 +41,7 @@ export function UserMentionInput({
 
   useEffect(() => {
     fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchUsers = async () => {
@@ -142,6 +143,7 @@ export function UserMentionInput({
     const mentions = extractMentions(value)
     const userIds = mentions.map((m) => m.userId)
     onMentionsChange(userIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, users])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -60,6 +60,7 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
     resolver: zodResolver(actionItemSchema),
     defaultValues: {
       projectId: projectId || null,
+      priority: "MEDIUM",
     },
   })
 
@@ -108,8 +109,10 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         priority: data.priority || "MEDIUM",
       }
 
-      // Handle projectId - convert empty string to null
-      if (data.projectId && data.projectId.trim() !== "") {
+      // Handle projectId - use prop if provided, otherwise use form value
+      if (projectId) {
+        cleanedData.projectId = projectId
+      } else if (data.projectId && typeof data.projectId === "string" && data.projectId.trim() !== "") {
         cleanedData.projectId = data.projectId
       } else {
         cleanedData.projectId = null
