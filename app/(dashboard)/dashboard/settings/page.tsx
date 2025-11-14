@@ -186,7 +186,7 @@ export default async function SettingsPage() {
                         <p className="text-xs text-amber-700 mt-1">
                           {!googleStatus.hasGmail && "Gmail permission is required to send email reminders. "}
                           {!googleStatus.hasCalendar && "Calendar permission is required to sync meetings. "}
-                          Click "Reconnect Google Account" to grant the missing permissions.
+                          Click &quot;Reconnect Google Account&quot; to grant the missing permissions.
                         </p>
                       </div>
                     </div>
