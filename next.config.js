@@ -8,8 +8,6 @@ const nextConfig = {
       },
     ],
   },
-  // Ensure public folder is copied in standalone builds
-  output: 'standalone',
   async headers() {
     return [
       {
