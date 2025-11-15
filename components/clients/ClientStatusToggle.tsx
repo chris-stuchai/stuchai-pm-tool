@@ -5,6 +5,17 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Ban, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
 
 interface ClientStatusToggleProps {
   clientId: string
@@ -15,6 +26,7 @@ interface ClientStatusToggleProps {
 export function ClientStatusToggle({ clientId, isActive, className }: ClientStatusToggleProps) {
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState(isActive)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const router = useRouter()
 
   const handleToggle = async () => {
@@ -32,6 +44,7 @@ export function ClientStatusToggle({ clientId, isActive, className }: ClientStat
       }
 
       setActive(!active)
+      setConfirmOpen(false)
       router.refresh()
     } catch (error) {
       console.error(error)
@@ -41,25 +54,53 @@ export function ClientStatusToggle({ clientId, isActive, className }: ClientStat
     }
   }
 
+  const heading = active ? "Deactivate client?" : "Reactivate client?"
+  const message = active
+    ? "The client will immediately lose access to their portal and related tasks. You can re-activate them at any time."
+    : "This will restore the client's access to their portal and assigned tasks."
+
   return (
-    <Button
-      variant={active ? "outline" : "secondary"}
-      onClick={handleToggle}
-      disabled={loading}
-      className={cn("justify-center", className)}
+    <AlertDialog
+      open={confirmOpen}
+      onOpenChange={(open) => {
+        if (!loading) {
+          setConfirmOpen(open)
+        }
+      }}
     >
-      {active ? (
-        <>
-          <Ban className="mr-2 h-4 w-4" />
-          {loading ? "Deactivating..." : "Deactivate Client"}
-        </>
-      ) : (
-        <>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          {loading ? "Reactivating..." : "Reactivate Client"}
-        </>
-      )}
-    </Button>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant={active ? "outline" : "secondary"}
+          onClick={() => setConfirmOpen(true)}
+          disabled={loading}
+          className={cn("justify-center", className)}
+        >
+          {active ? (
+            <>
+              <Ban className="mr-2 h-4 w-4" />
+              {loading ? "Deactivating..." : "Deactivate Client"}
+            </>
+          ) : (
+            <>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {loading ? "Reactivating..." : "Reactivate Client"}
+            </>
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{heading}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleToggle} disabled={loading}>
+            {active ? "Yes, deactivate" : "Yes, reactivate"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
