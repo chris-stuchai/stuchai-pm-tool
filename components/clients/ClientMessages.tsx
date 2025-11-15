@@ -38,9 +38,15 @@ interface ClientMessagesProps {
   clientId: string
   currentUserId: string
   disabled?: boolean
+  isClientActive?: boolean
 }
 
-export function ClientMessages({ clientId, currentUserId, disabled }: ClientMessagesProps) {
+export function ClientMessages({
+  clientId,
+  currentUserId,
+  disabled,
+  isClientActive,
+}: ClientMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(true)
@@ -116,6 +122,8 @@ export function ClientMessages({ clientId, currentUserId, disabled }: ClientMess
     }
     return email[0].toUpperCase()
   }
+
+  const inputDisabled = disabled ?? (isClientActive === false)
 
   if (loading) {
     return <div>Loading messages...</div>
@@ -194,13 +202,13 @@ export function ClientMessages({ clientId, currentUserId, disabled }: ClientMess
             onChange={setContent}
             onMentionsChange={setMentionedUserIds}
             placeholder={
-              disabled
+              inputDisabled
                 ? "Messaging disabled while this client is inactive"
                 : "Type a message... Use @ to mention someone"
             }
-            disabled={disabled}
+            disabled={inputDisabled}
           />
-          <Button type="submit" disabled={disabled || sending || !content.trim()}>
+          <Button type="submit" disabled={inputDisabled || sending || !content.trim()}>
             <Send className="mr-2 h-4 w-4" />
             {sending ? "Sending..." : "Send"}
           </Button>

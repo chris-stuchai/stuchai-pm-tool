@@ -15,6 +15,8 @@ import { ClientMessages } from "@/components/clients/ClientMessages"
 import { InviteClientButton } from "@/components/clients/InviteClientButton"
 import { ClientStatusToggle } from "@/components/clients/ClientStatusToggle"
 import { UserRole } from "@prisma/client"
+import { calculateProjectProgress } from "@/lib/projects"
+import { DeliverablesCard } from "@/components/deliverables/DeliverablesCard"
 
 async function getClient(id: string) {
   const client = await db.client.findUnique({
@@ -34,6 +36,20 @@ async function getClient(id: string) {
               status: {
                 not: "COMPLETED",
               },
+            },
+          },
+          milestones: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      },
+      deliverables: {
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
@@ -143,37 +159,52 @@ export default async function ClientDetailPage({
               <p className="text-sm text-muted-foreground">No projects yet</p>
             ) : (
               <div className="space-y-4">
-                {client.projects.map((project) => (
-                  <div key={project.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/dashboard/projects/${project.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {project.name}
-                      </Link>
-                      <Badge variant="outline">{project.status}</Badge>
+                {client.projects.map((project) => {
+                  const computedProgress = calculateProjectProgress({
+                    actionItems: project.actionItems,
+                    milestones: project.milestones ?? [],
+                  })
+                  return (
+                    <div key={project.id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/dashboard/projects/${project.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {project.name}
+                        </Link>
+                        <Badge variant="outline">{project.status}</Badge>
+                      </div>
+                      <Progress value={computedProgress} className="h-2" />
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{computedProgress}% complete</span>
+                        <span>{project.actionItems.length} open tasks</span>
+                      </div>
                     </div>
-                    <Progress value={project.progress} className="h-2" />
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{project.progress}% complete</span>
-                      <span>{project.actionItems.length} open tasks</span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <ClientDocuments clientId={client.id} canEdit={canEdit} />
-        <ClientMessages
-          clientId={client.id}
-          currentUserId={session.user.id}
-          disabled={!client.active}
-        />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <ClientDocuments clientId={client.id} canEdit={canEdit} />
+          <DeliverablesCard
+            clientId={client.id}
+            canEdit={canEdit}
+            initialItems={client.deliverables}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <ClientMessages
+            clientId={client.id}
+            currentUserId={session.user.id}
+            disabled={!client.active}
+          />
+        </div>
       </div>
     </div>
   )

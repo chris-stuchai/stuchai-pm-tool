@@ -16,6 +16,7 @@ import { Plus } from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils"
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog"
+import { calculateProjectProgress } from "@/lib/projects"
 
 const projectQuery = Prisma.validator<Prisma.ProjectFindManyArgs>()({
   include: {
@@ -39,6 +40,7 @@ const projectQuery = Prisma.validator<Prisma.ProjectFindManyArgs>()({
         status: true,
       },
     },
+    milestones: true,
   },
   orderBy: {
     updatedAt: "desc",
@@ -119,7 +121,12 @@ export default async function ProjectsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          {projects.map((project) => {
+            const computedProgress = calculateProjectProgress({
+              actionItems: project.actionItems,
+              milestones: project.milestones ?? [],
+            })
+            return (
             <Card key={project.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -135,9 +142,9 @@ export default async function ProjectsPage() {
                   <div>
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{project.progress}%</span>
+                      <span className="font-medium">{computedProgress}%</span>
                     </div>
-                    <Progress value={project.progress} />
+                    <Progress value={computedProgress} />
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tasks</span>
@@ -158,7 +165,7 @@ export default async function ProjectsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
     </div>

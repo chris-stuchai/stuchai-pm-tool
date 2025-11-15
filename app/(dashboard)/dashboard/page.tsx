@@ -8,11 +8,19 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Users, FolderKanban, CheckSquare, AlertCircle, Calendar, FileText, MessageSquare } from "lucide-react"
 import { UserRole } from "@prisma/client"
+import { calculateProjectProgress } from "@/lib/projects"
 
-async function getDashboardData(userId: string, role: UserRole) {
+async function getDashboardData(userId: string, role: UserRole, email?: string | null) {
   if (role === UserRole.CLIENT) {
     // Client view
-    const [actionItems, overdueItems, upcomingMeetings, recentDocuments] = await Promise.all([
+    const clientRecord = email
+      ? await db.client.findFirst({
+          where: { email: email.toLowerCase() },
+          select: { id: true },
+        })
+      : null
+
+    const [actionItems, overdueItems, upcomingMeetings, recentDocuments, deliverables] = await Promise.all([
       db.actionItem.count({
         where: {
           assignedTo: userId,
@@ -58,19 +66,11 @@ async function getDashboardData(userId: string, role: UserRole) {
         },
       }),
       db.clientDocument.findMany({
-        where: {
-          client: {
-            projects: {
-              some: {
-                actionItems: {
-                  some: {
-                    assignedTo: userId,
-                  },
-                },
-              },
-            },
-          },
-        },
+        where: clientRecord
+          ? {
+              clientId: clientRecord.id,
+            }
+          : undefined,
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
@@ -88,16 +88,25 @@ async function getDashboardData(userId: string, role: UserRole) {
           },
         },
       }),
+      db.deliverable.findMany({
+        where: clientRecord ? { clientId: clientRecord.id } : undefined,
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+      }),
     ])
 
     const myProjects = await db.project.findMany({
-      where: {
-        actionItems: {
-          some: {
-            assignedTo: userId,
+      where: clientRecord
+        ? {
+            clientId: clientRecord.id,
+          }
+        : {
+            actionItems: {
+              some: {
+                assignedTo: userId,
+              },
+            },
           },
-        },
-      },
       include: {
         client: true,
         actionItems: {
@@ -108,6 +117,7 @@ async function getDashboardData(userId: string, role: UserRole) {
             },
           },
         },
+        milestones: true,
       },
     })
 
@@ -129,6 +139,30 @@ async function getDashboardData(userId: string, role: UserRole) {
       },
     })
 
+    const timeline = [
+      ...myProjects.flatMap((project) =>
+        project.milestones.map((milestone) => ({
+          id: milestone.id,
+          title: milestone.name,
+          date: milestone.dueDate,
+          type: "Milestone" as const,
+          project: project.name,
+          status: milestone.completedAt ? "Completed" : "Upcoming",
+        }))
+      ),
+      ...myActionItems.map((item) => ({
+        id: item.id,
+        title: item.title,
+        date: item.dueDate,
+        type: "Task" as const,
+        project: item.project?.name || "General",
+        status: item.status,
+      })),
+    ].sort((a, b) => {
+      if (!a.date || !b.date) return 0
+      return new Date(a.date).getTime() - new Date(b.date).getTime()
+    })
+
     return {
       isClient: true,
       stats: {
@@ -141,6 +175,8 @@ async function getDashboardData(userId: string, role: UserRole) {
       recentDocuments,
       myProjects,
       myActionItems,
+      deliverables,
+      timeline,
     }
   }
 
@@ -174,6 +210,8 @@ async function getDashboardData(userId: string, role: UserRole) {
     orderBy: { updatedAt: "desc" },
     include: {
       client: true,
+      actionItems: true,
+      milestones: true,
     },
   })
 
@@ -219,7 +257,7 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
 
-  const data = await getDashboardData(session.user.id, session.user.role)
+  const data = await getDashboardData(session.user.id, session.user.role, session.user.email)
 
   if (data.isClient) {
     return (
@@ -228,6 +266,36 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">My Portal</h1>
           <p className="text-gray-600 mt-1">Welcome back, {session.user.name}</p>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Timeline</CardTitle>
+            <CardDescription>Milestones and tasks with key dates</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!data.timeline || data.timeline.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Timeline updates will appear here as tasks and milestones are scheduled.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {data.timeline.map((entry: any) => (
+                  <div key={entry.id} className="flex items-start gap-4">
+                    <div className="w-28 text-xs text-muted-foreground">
+                      {entry.date ? formatDate(entry.date) : "TBD"}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{entry.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.project} • {entry.type} • {entry.status}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -272,7 +340,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>Upcoming Meetings</CardTitle>
@@ -331,6 +399,39 @@ export default async function DashboardPage() {
                   View all tasks <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Deliverables</CardTitle>
+              <CardDescription>Latest uploads and shared assets</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {!data.deliverables || data.deliverables.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Your deliverables will appear here as soon as your team shares them.
+                  </p>
+                ) : (
+                  data.deliverables.map((deliverable: any) => (
+                    <div key={deliverable.id} className="rounded-lg border p-3">
+                      <p className="text-sm font-medium">{deliverable.name}</p>
+                      <p className="text-xs text-muted-foreground">{deliverable.status}</p>
+                      {deliverable.link && (
+                        <a
+                          href={deliverable.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline mt-1 inline-flex items-center"
+                        >
+                          Access Deliverable
+                          <ArrowRight className="ml-1 h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -399,18 +500,24 @@ export default async function DashboardPage() {
               {!data.recentProjects || data.recentProjects.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No projects yet</p>
               ) : (
-                data.recentProjects.map((project) => (
-                  <div key={project.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{project.name}</p>
-                      <p className="text-xs text-muted-foreground">{project.client.name}</p>
+                data.recentProjects.map((project) => {
+                  const computedProgress = calculateProjectProgress({
+                    actionItems: project.actionItems,
+                    milestones: project.milestones || [],
+                  })
+                  return (
+                    <div key={project.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{project.name}</p>
+                        <p className="text-xs text-muted-foreground">{project.client.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <Progress value={computedProgress} className="w-24 mb-1" />
+                        <p className="text-xs text-muted-foreground">{computedProgress}%</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <Progress value={project.progress} className="w-24 mb-1" />
-                      <p className="text-xs text-muted-foreground">{project.progress}%</p>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
             <Button variant="ghost" className="w-full mt-4" asChild>

@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
     if (projectId) {
       where.projectId = projectId
     } else if (projectId === null) {
-      // Global action items (no project)
       where.projectId = null
     }
     if (assignedTo) {
@@ -30,9 +29,23 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    // If user is CLIENT, only show their assigned items
     if (session.user.role === UserRole.CLIENT) {
-      where.assignedTo = session.user.id
+      const clientEmail = session.user.email?.toLowerCase()
+      where.OR = [
+        { assignedTo: session.user.id },
+        ...(clientEmail
+          ? [
+              {
+                visibleToClient: true,
+                project: {
+                  client: {
+                    email: clientEmail,
+                  },
+                },
+              },
+            ]
+          : []),
+      ]
     }
 
     const actionItems = await db.actionItem.findMany({
@@ -74,6 +87,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        attachments: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -103,7 +117,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, projectId, assignedTo, dueDate, priority, mentions } = body
+    const {
+      title,
+      description,
+      projectId,
+      assignedTo,
+      dueDate,
+      priority,
+      mentions,
+      visibleToClient,
+      clientCanComplete,
+    } = body
 
     if (!title) {
       return NextResponse.json(
@@ -121,6 +145,8 @@ export async function POST(request: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : null,
         priority: priority || Priority.MEDIUM,
         createdBy: session.user.id,
+        visibleToClient: !!visibleToClient,
+        clientCanComplete: !!clientCanComplete,
         mentions: mentions && mentions.length > 0
           ? {
               create: mentions.map((userId: string) => ({
@@ -166,6 +192,7 @@ export async function POST(request: NextRequest) {
             },
           },
         },
+        attachments: true,
       },
     })
 

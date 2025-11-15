@@ -33,14 +33,29 @@ interface ActionItem {
       name: string
     }
   } | null
+  visibleToClient?: boolean
+  clientCanComplete?: boolean
+  clientCompleted?: boolean
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+  }>
 }
+
+type Role = "ADMIN" | "MANAGER" | "CLIENT"
 
 interface ActionItemsFilterProps {
   initialItems: ActionItem[]
   canEdit: boolean
+  currentUserRole: Role
 }
 
-export function ActionItemsFilter({ initialItems, canEdit }: ActionItemsFilterProps) {
+export function ActionItemsFilter({
+  initialItems,
+  canEdit,
+  currentUserRole,
+}: ActionItemsFilterProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
   const [projectFilter, setProjectFilter] = useState<string>("all")
@@ -158,7 +173,11 @@ export function ActionItemsFilter({ initialItems, canEdit }: ActionItemsFilterPr
 
       <Card>
         <CardContent className="pt-6">
-          <ActionItemList actionItems={filteredItems} canEdit={canEdit} />
+          <ActionItemList
+            actionItems={filteredItems}
+            canEdit={canEdit}
+            currentUserRole={currentUserRole}
+          />
         </CardContent>
       </Card>
     </div>

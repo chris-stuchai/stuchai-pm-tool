@@ -6,22 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDate } from "@/lib/utils"
 import { MessageSquare } from "lucide-react"
 import { ClientMessages } from "@/components/clients/ClientMessages"
+import { AdminMessagesPanel } from "@/components/messages/AdminMessagesPanel"
 
-async function getClientConversations(userId: string) {
-  // Get clients where user has assigned action items
+async function getClientConversations(userId: string, role: UserRole, userEmail?: string | null) {
+  const baseWhere =
+    role === UserRole.CLIENT && userEmail
+      ? { email: userEmail.toLowerCase() }
+      : { active: true }
+
   const clients = await db.client.findMany({
-    where: {
-      active: true,
-      projects: {
-        some: {
-          actionItems: {
-            some: {
-              assignedTo: userId,
-            },
-          },
-        },
-      },
-    },
+    where: baseWhere,
     include: {
       messages: {
         take: 1,
@@ -48,28 +42,24 @@ export default async function MessagesPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  // Only clients can access this page
-  if (session.user.role !== UserRole.CLIENT) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-          <p className="text-gray-600 mt-1">This page is only available for clients.</p>
-        </div>
-      </div>
-    )
-  }
-
-  const clients = await getClientConversations(session.user.id)
+  const isClient = session.user.role === UserRole.CLIENT
+  const clients = await getClientConversations(session.user.id, session.user.role, session.user.email)
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600 mt-1">Communicate with your project team</p>
+        <p className="text-gray-600 mt-1">
+          {isClient ? "Communicate with your project team" : "Collaborate with clients in real time"}
+        </p>
       </div>
 
-      {clients.length === 0 ? (
+      {!isClient ? (
+        <AdminMessagesPanel
+          clients={clients.map((client) => ({ id: client.id, name: client.name, email: client.email }))}
+          currentUserId={session.user.id}
+        />
+      ) : clients.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -92,7 +82,11 @@ export default async function MessagesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ClientMessages clientId={client.id} currentUserId={session.user.id} />
+                <ClientMessages
+                  clientId={client.id}
+                  currentUserId={session.user.id}
+                  isClientActive={client.active}
+                />
               </CardContent>
             </Card>
           ))}

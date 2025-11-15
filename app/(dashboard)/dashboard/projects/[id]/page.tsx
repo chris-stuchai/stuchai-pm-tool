@@ -12,6 +12,7 @@ import { ArrowLeft } from "lucide-react"
 import { ProjectActionItems } from "@/components/projects/ProjectActionItems"
 import { EditProjectDialog } from "@/components/projects/EditProjectDialog"
 import { UserRole } from "@prisma/client"
+import { calculateProjectProgress } from "@/lib/projects"
 
 async function getProject(id: string) {
   const project = await db.project.findUnique({
@@ -74,6 +75,10 @@ export default async function ProjectDetailPage({
   }
 
   const canEdit = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
+  const computedProgress = calculateProjectProgress({
+    actionItems: project.actionItems,
+    milestones: project.milestones ?? [],
+  })
 
   return (
     <div className="space-y-6">
@@ -108,9 +113,9 @@ export default async function ProjectDetailPage({
             <div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Progress</span>
-                <span className="font-medium">{project.progress}%</span>
+                <span className="font-medium">{computedProgress}%</span>
               </div>
-              <Progress value={project.progress} />
+              <Progress value={computedProgress} />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>

@@ -26,6 +26,7 @@ import { Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const actionItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -34,6 +35,8 @@ const actionItemSchema = z.object({
   assignedTo: z.string().optional().nullable().or(z.literal("__unassigned__")),
   dueDate: z.string().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+  visibleToClient: z.boolean().optional().default(false),
+  clientCanComplete: z.boolean().optional().default(false),
 })
 
 type ActionItemFormData = z.infer<typeof actionItemSchema>
@@ -62,6 +65,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       projectId: projectId || "__none__",
       assignedTo: "__unassigned__",
       priority: "MEDIUM",
+      visibleToClient: false,
+      clientCanComplete: false,
     },
   })
 
@@ -95,10 +100,18 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         setUsers([])
       })
     } else {
-      // Reset form when dialog closes
-      reset()
+      reset({
+        title: "",
+        description: "",
+        projectId: projectId || "__none__",
+        assignedTo: "__unassigned__",
+        dueDate: "",
+        priority: "MEDIUM",
+        visibleToClient: false,
+        clientCanComplete: false,
+      })
     }
-  }, [open, reset])
+  }, [open, reset, projectId])
 
   const onSubmit = async (data: ActionItemFormData) => {
     setLoading(true)
@@ -133,6 +146,9 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         cleanedData.dueDate = null
       }
 
+      cleanedData.visibleToClient = Boolean(data.visibleToClient)
+      cleanedData.clientCanComplete = Boolean(data.clientCanComplete)
+
       console.log("Submitting action item:", cleanedData)
 
       const response = await fetch("/api/action-items", {
@@ -157,6 +173,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         assignedTo: "__unassigned__",
         dueDate: "",
         priority: "MEDIUM",
+        visibleToClient: false,
+        clientCanComplete: false,
       })
       router.refresh()
     } catch (error) {
@@ -277,6 +295,38 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                   {...register("dueDate")}
                 />
               </div>
+            </div>
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Display in client portal</p>
+                  <p className="text-xs text-muted-foreground">
+                    Share this task with the client for transparency.
+                  </p>
+                </div>
+                <Checkbox
+                  checked={watch("visibleToClient")}
+                  onCheckedChange={(checked) =>
+                    setValue("visibleToClient", Boolean(checked), { shouldValidate: true })
+                  }
+                />
+              </div>
+              {watch("visibleToClient") && (
+                <div className="flex items-start justify-between gap-4 border-t pt-3">
+                  <div>
+                    <p className="text-sm font-medium">Allow client completion</p>
+                    <p className="text-xs text-muted-foreground">
+                      Clients can mark this done and upload supporting files.
+                    </p>
+                  </div>
+                  <Checkbox
+                    checked={watch("clientCanComplete")}
+                    onCheckedChange={(checked) =>
+                      setValue("clientCanComplete", Boolean(checked), { shouldValidate: true })
+                    }
+                  />
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Circle, Clock, AlertCircle, Mail } from "lucide-react"
+import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -12,6 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -35,11 +43,20 @@ interface ActionItem {
       name: string
     }
   } | null
+  visibleToClient?: boolean
+  clientCanComplete?: boolean
+  clientCompleted?: boolean
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+  }>
 }
 
 interface ActionItemListProps {
   actionItems: ActionItem[]
   canEdit: boolean
+  currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
 }
 
 const priorityColors = {
@@ -56,10 +73,18 @@ const statusIcons = {
   OVERDUE: AlertCircle,
 }
 
-export function ActionItemList({ actionItems, canEdit }: ActionItemListProps) {
+export function ActionItemList({
+  actionItems,
+  canEdit,
+  currentUserRole = "ADMIN",
+}: ActionItemListProps) {
   const router = useRouter()
   const [updating, setUpdating] = useState<string | null>(null)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
+  const [clientUpdating, setClientUpdating] = useState<string | null>(null)
+  const [attachmentModal, setAttachmentModal] = useState<{ id: string; title: string } | null>(null)
+  const [attachmentForm, setAttachmentForm] = useState({ name: "", url: "" })
+  const [attachmentSubmitting, setAttachmentSubmitting] = useState(false)
 
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     setUpdating(itemId)
@@ -103,6 +128,53 @@ export function ActionItemList({ actionItems, canEdit }: ActionItemListProps) {
       alert("Failed to send reminder. Please ensure Gmail is connected.")
     } finally {
       setSendingReminder(null)
+    }
+  }
+
+  const handleClientCompletion = async (itemId: string, completed: boolean) => {
+    setClientUpdating(itemId)
+    try {
+      const response = await fetch(`/api/action-items/${itemId}/client`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update task")
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error("Error updating client task:", error)
+      alert("Unable to update the task. Please try again.")
+    } finally {
+      setClientUpdating(null)
+    }
+  }
+
+  const handleAttachmentSubmit = async () => {
+    if (!attachmentModal || !attachmentForm.name || !attachmentForm.url) return
+    setAttachmentSubmitting(true)
+    try {
+      const response = await fetch(`/api/action-items/${attachmentModal.id}/client`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attachment: { ...attachmentForm },
+        }),
+      })
+      if (!response.ok) {
+        throw new Error("Failed to upload attachment")
+      }
+      setAttachmentModal(null)
+      setAttachmentForm({ name: "", url: "" })
+      router.refresh()
+    } catch (error) {
+      console.error("Error uploading attachment:", error)
+      alert("Unable to upload attachment. Please try again.")
+    } finally {
+      setAttachmentSubmitting(false)
     }
   }
 
@@ -213,10 +285,92 @@ export function ActionItemList({ actionItems, canEdit }: ActionItemListProps) {
                   </span>
                 </div>
               )}
+              {item.attachments && item.attachments.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {item.attachments.map((attachment) => (
+                    <a
+                      key={attachment.id}
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center text-xs text-primary hover:underline"
+                    >
+                      <Paperclip className="mr-1 h-3 w-3" />
+                      {attachment.name}
+                    </a>
+                  ))}
+                </div>
+              )}
+              {currentUserRole === "CLIENT" && item.visibleToClient && (
+                <div className="flex flex-wrap gap-2 pt-3">
+                  {item.clientCanComplete && (
+                    <Button
+                      size="sm"
+                      variant={item.clientCompleted ? "outline" : "default"}
+                      onClick={() => handleClientCompletion(item.id, !item.clientCompleted)}
+                      disabled={clientUpdating === item.id}
+                    >
+                      {clientUpdating === item.id
+                        ? "Updating..."
+                        : item.clientCompleted
+                        ? "Mark Incomplete"
+                        : "Mark Complete"}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAttachmentModal({ id: item.id, title: item.title })}
+                  >
+                    Add Attachment
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )
       })}
+      <Dialog
+        open={!!attachmentModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAttachmentModal(null)
+            setAttachmentForm({ name: "", url: "" })
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Attachment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="Attachment name"
+              value={attachmentForm.name}
+              onChange={(e) => setAttachmentForm((prev) => ({ ...prev, name: e.target.value }))}
+            />
+            <Input
+              placeholder="https://link-to-file"
+              value={attachmentForm.url}
+              onChange={(e) => setAttachmentForm((prev) => ({ ...prev, url: e.target.value }))}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAttachmentModal(null)
+                setAttachmentForm({ name: "", url: "" })
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAttachmentSubmit} disabled={attachmentSubmitting}>
+              {attachmentSubmitting ? "Uploading..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

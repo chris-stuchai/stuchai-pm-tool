@@ -2,24 +2,33 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { UserRole } from "@prisma/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreateActionItemDialog } from "@/components/actions/CreateActionItemDialog"
-import { ActionItemList } from "@/components/actions/ActionItemList"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { ActionItemsFilter } from "@/components/actions/ActionItemsFilter"
 
-async function getActionItems(userId: string, userRole: UserRole) {
+async function getActionItems(userId: string, userRole: UserRole, email?: string | null) {
   const where: any = {}
-  
-  // CLIENT can only see their assigned items
+
   if (userRole === UserRole.CLIENT) {
-    where.assignedTo = userId
+    const client = email
+      ? await db.client.findFirst({
+          where: { email: email.toLowerCase() },
+          select: { id: true },
+        })
+      : null
+
+    where.OR = [
+      { assignedTo: userId },
+      ...(client
+        ? [
+            {
+              visibleToClient: true,
+              project: {
+                clientId: client.id,
+              },
+            },
+          ]
+        : []),
+    ]
   }
 
   const actionItems = await db.actionItem.findMany({
@@ -61,6 +70,7 @@ async function getActionItems(userId: string, userRole: UserRole) {
           },
         },
       },
+      attachments: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -74,7 +84,7 @@ export default async function ActionItemsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  const actionItems = await getActionItems(session.user.id, session.user.role)
+  const actionItems = await getActionItems(session.user.id, session.user.role, session.user.email)
   const canCreate = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
 
   return (
@@ -87,7 +97,11 @@ export default async function ActionItemsPage() {
         {canCreate && <CreateActionItemDialog />}
       </div>
 
-      <ActionItemsFilter initialItems={actionItems} canEdit={canCreate} />
+      <ActionItemsFilter
+        initialItems={actionItems}
+        canEdit={canCreate}
+        currentUserRole={session.user.role}
+      />
     </div>
   )
 }
