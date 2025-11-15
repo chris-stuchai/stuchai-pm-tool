@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, password, name, role } = body
+    const rawEmail = typeof body.email === "string" ? body.email : ""
+    const { password, name, role } = body
+    const email = rawEmail.trim().toLowerCase()
 
     if (!email || !password) {
       return NextResponse.json(

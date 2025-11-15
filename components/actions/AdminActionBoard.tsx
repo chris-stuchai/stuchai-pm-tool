@@ -35,6 +35,8 @@ interface ActionItem {
   visibleToClient?: boolean
   clientCanComplete?: boolean
   clientCompleted?: boolean
+  showOnTimeline?: boolean
+  timelineLabel?: string | null
   attachments?: Array<{
     id: string
     name: string

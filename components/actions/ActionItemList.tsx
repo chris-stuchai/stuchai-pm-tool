@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil, Trash2 } from "lucide-react"
+import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil, Trash2, CalendarDays } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -61,6 +61,8 @@ interface ActionItem {
   visibleToClient?: boolean
   clientCanComplete?: boolean
   clientCompleted?: boolean
+  showOnTimeline?: boolean
+  timelineLabel?: string | null
   attachments?: Array<{
     id: string
     name: string
@@ -283,6 +285,8 @@ export function ActionItemList({
             : null,
           visibleToClient: item.visibleToClient,
           clientCanComplete: item.clientCanComplete,
+          showOnTimeline: item.showOnTimeline,
+          timelineLabel: item.timelineLabel,
         }
 
         return (
@@ -325,6 +329,13 @@ export function ActionItemList({
                         </span>
                       )}
                     </div>
+                    {item.showOnTimeline && (
+                      <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
+                        <CalendarDays className="h-3 w-3" />
+                        Timeline
+                        {item.timelineLabel ? ` • ${item.timelineLabel}` : ""}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

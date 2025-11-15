@@ -6,7 +6,8 @@ function getBaseUrl() {
   return process.env.NEXTAUTH_URL || process.env.APP_URL || "http://localhost:3000"
 }
 
-async function getNotificationSenderUserId() {
+/** Returns the ID of the first Google-connected admin who can send email on behalf of the workspace. */
+export async function getNotificationSenderUserId() {
   const account = await db.account.findFirst({
     where: {
       provider: "google",

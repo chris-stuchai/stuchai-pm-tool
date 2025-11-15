@@ -37,6 +37,8 @@ const actionItemSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
   visibleToClient: z.boolean().optional().default(false),
   clientCanComplete: z.boolean().optional().default(false),
+  showOnTimeline: z.boolean().optional().default(false),
+  timelineLabel: z.string().max(120, "Timeline note must be under 120 characters").optional().nullable(),
 })
 
 type ActionItemFormData = z.infer<typeof actionItemSchema>
@@ -67,6 +69,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       priority: "MEDIUM",
       visibleToClient: false,
       clientCanComplete: false,
+      showOnTimeline: false,
+      timelineLabel: "",
     },
   })
 
@@ -109,6 +113,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         priority: "MEDIUM",
         visibleToClient: false,
         clientCanComplete: false,
+        showOnTimeline: false,
+        timelineLabel: "",
       })
     }
   }, [open, reset, projectId])
@@ -148,6 +154,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
 
       cleanedData.visibleToClient = Boolean(data.visibleToClient)
       cleanedData.clientCanComplete = Boolean(data.clientCanComplete)
+      cleanedData.showOnTimeline = Boolean(data.showOnTimeline)
+      cleanedData.timelineLabel = data.timelineLabel?.trim() || null
 
       console.log("Submitting action item:", cleanedData)
 
@@ -325,6 +333,36 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                       setValue("clientCanComplete", Boolean(checked), { shouldValidate: true })
                     }
                   />
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Highlight on project timeline</p>
+                  <p className="text-xs text-muted-foreground">
+                    Surface this task alongside milestones for better visibility.
+                  </p>
+                </div>
+                <Checkbox
+                  checked={watch("showOnTimeline")}
+                  onCheckedChange={(checked) =>
+                    setValue("showOnTimeline", Boolean(checked), { shouldValidate: true })
+                  }
+                />
+              </div>
+              {watch("showOnTimeline") && (
+                <div className="space-y-2 border-t pt-3">
+                  <Label htmlFor="timeline-label">Timeline note (optional)</Label>
+                  <Input
+                    id="timeline-label"
+                    placeholder="e.g., Client launch readiness"
+                    {...register("timelineLabel")}
+                    maxLength={120}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Defaults to the action title if left blank.
+                  </p>
                 </div>
               )}
             </div>

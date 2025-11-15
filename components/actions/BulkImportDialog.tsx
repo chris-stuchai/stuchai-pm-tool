@@ -105,6 +105,7 @@ export function BulkImportDialog() {
               <li>
                 Supported priorities: LOW, MEDIUM, HIGH, URGENT. Dates use YYYY-MM-DD.
               </li>
+              <li>Use the new “Add To Timeline” column to surface a task on the project timeline.</li>
             </ul>
             <Button
               variant="link"

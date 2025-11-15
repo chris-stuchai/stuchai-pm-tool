@@ -1,10 +1,13 @@
 "use client"
 
-import { cn } from "@/lib/utils"
-import { MilestoneDialog } from "./MilestoneDialog"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import { useMemo } from "react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { MilestoneDialog } from "./MilestoneDialog"
+import { Plus } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+type TimelineStatus = "completed" | "in-progress" | "upcoming" | "overdue"
 
 interface TimelineMilestone {
   id: string
@@ -14,22 +17,46 @@ interface TimelineMilestone {
   completedAt: Date | null
 }
 
+interface TimelineAction {
+  id: string
+  title: string
+  description?: string | null
+  status: string
+  dueDate: Date | string | null
+  showOnTimeline?: boolean
+  timelineLabel?: string | null
+}
+
 interface ProjectTimelineProps {
   projectId: string
   milestones: TimelineMilestone[]
+  actions?: TimelineAction[]
   startDate?: Date | null
   dueDate?: Date | null
   canEdit: boolean
 }
 
-function getStatus(milestone: TimelineMilestone) {
-  if (milestone.completedAt) {
-    return "completed" as const
-  }
-  if (milestone.dueDate && milestone.dueDate < new Date()) {
-    return "in-progress" as const
-  }
-  return "upcoming" as const
+const statusStyles: Record<TimelineStatus, { dot: string; badge: string; label: string }> = {
+  completed: {
+    dot: "border-emerald-500 bg-emerald-500",
+    badge: "bg-emerald-50 text-emerald-700",
+    label: "Completed",
+  },
+  "in-progress": {
+    dot: "border-blue-500 bg-blue-500",
+    badge: "bg-blue-50 text-blue-700",
+    label: "In progress",
+  },
+  upcoming: {
+    dot: "border-slate-300 bg-white",
+    badge: "bg-slate-50 text-slate-700",
+    label: "Upcoming",
+  },
+  overdue: {
+    dot: "border-rose-500 bg-rose-500",
+    badge: "bg-rose-50 text-rose-700",
+    label: "Overdue",
+  },
 }
 
 function formatDate(value: Date | null) {
@@ -37,12 +64,48 @@ function formatDate(value: Date | null) {
   return new Date(value).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    year: "numeric",
   })
 }
 
+function normalizeDate(value?: Date | string | null) {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function getMilestoneStatus(milestone: TimelineMilestone, now: Date): TimelineStatus {
+  if (milestone.completedAt) return "completed"
+  if (milestone.dueDate && milestone.dueDate < now) return "overdue"
+  if (milestone.dueDate && milestone.dueDate <= now) return "in-progress"
+  return "upcoming"
+}
+
+function getActionStatus(action: TimelineAction, now: Date): TimelineStatus {
+  if (action.status === "COMPLETED") return "completed"
+  const due = normalizeDate(action.dueDate)
+  if (due && due < now) return "overdue"
+  if (due) return "in-progress"
+  return "upcoming"
+}
+
+interface TimelineEntry {
+  id: string
+  type: "milestone" | "action"
+  title: string
+  description?: string | null
+  date: Date | null
+  status: TimelineStatus
+  milestone?: TimelineMilestone
+  action?: TimelineAction
+  subtitle?: string
+}
+
+/** Visualizes project milestones plus curated action items on a single timeline. */
 export function ProjectTimeline({
   projectId,
   milestones,
+  actions = [],
   startDate,
   dueDate,
   canEdit,
@@ -50,38 +113,52 @@ export function ProjectTimeline({
   const normalizedStartDate = startDate ? new Date(startDate) : null
   const normalizedDueDate = dueDate ? new Date(dueDate) : null
 
-  const normalizedMilestones = useMemo(
-    () =>
-      milestones.map((m) => ({
-        ...m,
-        dueDate: m.dueDate ? new Date(m.dueDate) : null,
-        completedAt: m.completedAt ? new Date(m.completedAt) : null,
-      })),
-    [milestones]
-  )
+  const entries = useMemo<TimelineEntry[]>(() => {
+    const now = new Date()
+    const milestoneEntries = milestones.map((milestone) => ({
+      id: milestone.id,
+      type: "milestone" as const,
+      title: milestone.name,
+      description: milestone.description,
+      date: milestone.dueDate ? new Date(milestone.dueDate) : null,
+      status: getMilestoneStatus(
+        {
+          ...milestone,
+          dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
+        },
+        now
+      ),
+      milestone,
+      subtitle: milestone.description || undefined,
+    }))
 
-  const sorted = useMemo(() => {
-    return [...normalizedMilestones].sort((a, b) => {
-      const aDate = a.dueDate ? a.dueDate.getTime() : Infinity
-      const bDate = b.dueDate ? b.dueDate.getTime() : Infinity
-      return aDate - bDate
+    const actionEntries = actions
+      .filter((action) => action.showOnTimeline)
+      .map((action) => {
+        const date = normalizeDate(action.dueDate)
+        return {
+          id: action.id,
+          type: "action" as const,
+          title: action.timelineLabel || action.title,
+          description: action.description ?? null,
+          date,
+          status: getActionStatus(action, now),
+          action,
+          subtitle: date ? `Task due ${formatDate(date)}` : "Task with no due date",
+        }
+      })
+
+    return [...milestoneEntries, ...actionEntries].sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.getTime() - b.date.getTime()
     })
-  }, [normalizedMilestones])
-
-  const now = new Date()
-  const progressRatio = (() => {
-    if (!normalizedStartDate || !normalizedDueDate) return null
-    const total = normalizedDueDate.getTime() - normalizedStartDate.getTime()
-    if (total <= 0) return null
-    const elapsed = Math.min(Math.max(now.getTime() - normalizedStartDate.getTime(), 0), total)
-    return elapsed / total
-  })()
-
-  const timelinePoints = sorted.length > 0 ? sorted : []
+  }, [milestones, actions])
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
             {normalizedStartDate ? `Start: ${formatDate(normalizedStartDate)}` : "Start date TBD"}
@@ -96,99 +173,76 @@ export function ProjectTimeline({
             trigger={
               <Button size="sm" variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Milestone
+                Add milestone
               </Button>
             }
           />
         )}
       </div>
-      <div className="relative mt-6">
-        <div className="absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 rounded-full bg-muted" />
-        {progressRatio !== null && (
-          <div
-            className="absolute top-0 bottom-0 w-px bg-primary/40"
-            style={{ left: `${Math.min(Math.max(progressRatio * 100, 0), 100)}%` }}
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-medium text-primary">
-              Today
-            </div>
-          </div>
-        )}
-        <div className="relative flex w-full items-start justify-between">
-          {timelinePoints.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
-              No milestones yet. {canEdit ? "Add one to build the timeline." : ""}
-            </p>
-          ) : (
-            timelinePoints.map((milestone) => {
-              const status = getStatus(milestone)
-              return (
-                <div
-                  key={milestone.id}
-                  className="flex flex-col items-center text-center"
-                  style={{ minWidth: `${100 / Math.max(timelinePoints.length, 1)}%` }}
-                >
-                    {canEdit ? (
+
+      {entries.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-gradient-to-b from-slate-50 to-white p-6 text-center text-sm text-muted-foreground">
+          No timeline items yet. {canEdit ? "Convert an action to a timeline marker or create a milestone." : ""}
+        </div>
+      ) : (
+        <div className="relative border-l border-slate-200 pl-6">
+          {entries.map((entry, index) => {
+            const styles = statusStyles[entry.status]
+            return (
+              <div key={entry.id} className={cn("relative pb-8", index === entries.length - 1 && "pb-0")}>
+                <span
+                  className={cn(
+                    "absolute -left-[9px] top-2 block h-4 w-4 rounded-full border-2 bg-white",
+                    styles.dot
+                  )}
+                />
+                <div className="rounded-lg border bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{entry.type === "milestone" ? "Milestone" : "Action"}</Badge>
+                      <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", styles.badge)}>
+                        {styles.label}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{formatDate(entry.date ?? null)}</span>
+                  </div>
+                  <p className="mt-2 text-base font-semibold text-slate-900">{entry.title}</p>
+                  {entry.subtitle && <p className="text-xs text-muted-foreground">{entry.subtitle}</p>}
+                  {entry.description && (
+                    <p className="mt-2 text-sm text-slate-600">{entry.description}</p>
+                  )}
+                  {entry.type === "milestone" && canEdit && entry.milestone && (
+                    <div className="mt-3">
                       <MilestoneDialog
                         projectId={projectId}
-                        milestone={milestone}
+                        milestone={entry.milestone}
                         trigger={
-                          <button
-                            className={cn(
-                              "relative flex h-8 w-8 items-center justify-center rounded-full border-2 transition",
-                              status === "completed" && "border-green-500 bg-green-500 text-white",
-                              status === "in-progress" && "border-blue-500 bg-blue-500 text-white",
-                              status === "upcoming" && "border-gray-300 bg-white text-muted-foreground"
-                            )}
-                          >
-                            <span className="text-xs font-semibold">
-                              {status === "completed" ? "✓" : "•"}
-                            </span>
-                          </button>
+                          <Button variant="ghost" size="sm">
+                            Edit milestone
+                          </Button>
                         }
                       />
-                    ) : (
-                      <div
-                        className={cn(
-                          "relative flex h-8 w-8 items-center justify-center rounded-full border-2",
-                          status === "completed" && "border-green-500 bg-green-500 text-white",
-                          status === "in-progress" && "border-blue-500 bg-blue-500 text-white",
-                          status === "upcoming" && "border-gray-300 bg-white text-muted-foreground"
-                        )}
-                      >
-                        <span className="text-xs font-semibold">
-                          {status === "completed" ? "✓" : "•"}
-                        </span>
-                      </div>
-                    )}
-                  <div className="mt-2 text-sm font-medium text-foreground">
-                    {milestone.name}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{formatDate(milestone.dueDate)}</p>
-                  {milestone.description && (
-                    <p className="mt-1 text-xs text-muted-foreground max-w-[140px]">
-                      {milestone.description}
+                    </div>
+                  )}
+                  {entry.type === "action" && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Linked action item • manage from the Action Items panel.
                     </p>
                   )}
                 </div>
-              )
-            })
-          )}
+              </div>
+            )
+          })}
         </div>
-        <div className="mt-6 flex items-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-            Completed
+      )}
+
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+        {Object.entries(statusStyles).map(([key, value]) => (
+          <div key={key} className="flex items-center gap-2">
+            <span className={cn("inline-block h-2 w-2 rounded-full border", value.dot)} />
+            {value.label}
           </div>
-          <div className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-            In Progress
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-gray-300" />
-            Upcoming
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   )

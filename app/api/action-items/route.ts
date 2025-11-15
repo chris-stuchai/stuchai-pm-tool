@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
       mentions,
       visibleToClient,
       clientCanComplete,
+      showOnTimeline,
+      timelineLabel,
     } = body
 
     if (!title) {
@@ -148,6 +150,8 @@ export async function POST(request: NextRequest) {
         createdBy: session.user.id,
         visibleToClient: !!visibleToClient,
         clientCanComplete: !!clientCanComplete,
+        showOnTimeline: !!showOnTimeline,
+        timelineLabel: timelineLabel?.trim() || null,
         mentions: mentions && mentions.length > 0
           ? {
               create: mentions.map((userId: string) => ({

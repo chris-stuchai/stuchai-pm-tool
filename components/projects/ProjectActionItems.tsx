@@ -27,6 +27,10 @@ interface ActionItem {
       name: string
     }
   } | null
+  showOnTimeline?: boolean
+  timelineLabel?: string | null
+  visibleToClient?: boolean
+  clientCanComplete?: boolean
 }
 
 interface ProjectActionItemsProps {

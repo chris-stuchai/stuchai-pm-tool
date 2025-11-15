@@ -34,8 +34,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedEmail = invitation.email.toLowerCase()
+
     const existingUser = await db.user.findUnique({
-      where: { email: invitation.email },
+      where: { email: normalizedEmail },
     })
 
     if (existingUser) {
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
     const user = await db.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
-          email: invitation.email,
+          email: normalizedEmail,
           name: displayName,
           password: hashedPassword,
           role: invitation.role,

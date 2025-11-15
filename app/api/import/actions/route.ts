@@ -209,6 +209,10 @@ export async function POST(request: NextRequest) {
             clientCanComplete: parseBoolean(
               row["Client Can Complete (true/false)"]
             ),
+            showOnTimeline: parseBoolean(
+              row["Add To Timeline (true/false)"]
+            ),
+            timelineLabel: row["Timeline Note"]?.trim() || null,
           },
         })
 

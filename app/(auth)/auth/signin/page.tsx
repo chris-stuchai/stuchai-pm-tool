@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, Suspense } from "react"
+import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
+/** Presents both Google OAuth and email/password sign-in flows. */
 function SignInForm() {
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
@@ -25,8 +27,9 @@ function SignInForm() {
     setErrorMessage("")
 
     try {
+      const normalizedEmail = email.trim().toLowerCase()
       const result = await signIn("credentials", {
-        email,
+        email: normalizedEmail,
         password,
         callbackUrl: "/dashboard",
         redirect: false,
@@ -130,6 +133,14 @@ function SignInForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <div className="text-right">
+                    <Link
+                      href="/auth/reset"
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
                 </div>
                 <Button
                   type="submit"
@@ -151,6 +162,7 @@ function SignInForm() {
   )
 }
 
+/** Wraps the sign-in form with a suspense boundary for search param hydration. */
 export default function SignInPage() {
   return (
     <Suspense fallback={

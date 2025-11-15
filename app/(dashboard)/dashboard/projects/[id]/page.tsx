@@ -87,6 +87,17 @@ export default async function ProjectDetailPage({
   const hasSegments = (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
   const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
   const displayProgress = project.status === "COMPLETED" ? 100 : baseProgress
+  const timelineActions = project.actionItems
+    .filter((item) => item.showOnTimeline)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      dueDate: item.dueDate,
+      showOnTimeline: item.showOnTimeline,
+      timelineLabel: item.timelineLabel,
+    }))
 
   return (
     <div className="space-y-6">
@@ -184,6 +195,7 @@ export default async function ProjectDetailPage({
           <ProjectTimeline
             projectId={project.id}
             milestones={project.milestones}
+            actions={timelineActions}
             startDate={project.startDate}
             dueDate={project.dueDate}
             canEdit={canEdit}

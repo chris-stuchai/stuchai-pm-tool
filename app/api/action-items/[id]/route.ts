@@ -120,7 +120,18 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, status, priority, dueDate, assignedTo, visibleToClient, clientCanComplete } = body
+    const {
+      title,
+      description,
+      status,
+      priority,
+      dueDate,
+      assignedTo,
+      visibleToClient,
+      clientCanComplete,
+      showOnTimeline,
+      timelineLabel,
+    } = body
 
     const updateData: any = {}
     if (title !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
@@ -172,6 +183,15 @@ export async function PATCH(
         updateData.clientCompleted = false
         updateData.clientCompletedAt = null
       }
+    }
+    if (showOnTimeline !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      updateData.showOnTimeline = !!showOnTimeline
+      if (!showOnTimeline) {
+        updateData.timelineLabel = null
+      }
+    }
+    if (timelineLabel !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      updateData.timelineLabel = timelineLabel?.trim() || null
     }
 
     const updated = await db.actionItem.update({

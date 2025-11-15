@@ -36,6 +36,8 @@ const editSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
   visibleToClient: z.boolean().optional().default(false),
   clientCanComplete: z.boolean().optional().default(false),
+  showOnTimeline: z.boolean().optional().default(false),
+  timelineLabel: z.string().max(120, "Timeline note must be under 120 characters").optional().nullable(),
 })
 
 type EditFormValues = z.infer<typeof editSchema>
@@ -52,6 +54,8 @@ interface EditActionItemDialogProps {
     assignee?: { id: string; name: string | null; email: string } | null
     visibleToClient?: boolean
     clientCanComplete?: boolean
+    showOnTimeline?: boolean
+    timelineLabel?: string | null
   }
 }
 
@@ -82,6 +86,8 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
       priority: (action.priority as EditFormValues["priority"]) || "MEDIUM",
       visibleToClient: Boolean(action.visibleToClient),
       clientCanComplete: Boolean(action.clientCanComplete),
+      showOnTimeline: Boolean(action.showOnTimeline),
+      timelineLabel: action.timelineLabel || "",
     },
   })
 
@@ -110,6 +116,8 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
         priority: values.priority || "MEDIUM",
         visibleToClient: Boolean(values.visibleToClient),
         clientCanComplete: Boolean(values.clientCanComplete),
+        showOnTimeline: Boolean(values.showOnTimeline),
+        timelineLabel: values.timelineLabel?.trim() || null,
       }
 
       payload.projectId =
@@ -153,6 +161,8 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
         priority: (action.priority as EditFormValues["priority"]) || "MEDIUM",
         visibleToClient: Boolean(action.visibleToClient),
         clientCanComplete: Boolean(action.clientCanComplete),
+        showOnTimeline: Boolean(action.showOnTimeline),
+        timelineLabel: action.timelineLabel || "",
       })
     }
   }, [open, action, reset])
@@ -277,6 +287,36 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
                     setValue("clientCanComplete", Boolean(checked))
                   }
                 />
+              </div>
+            )}
+          </div>
+          <div className="rounded-lg border p-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Highlight on project timeline</p>
+                <p className="text-xs text-muted-foreground">
+                  Show this task on the visual timeline for quick status reviews.
+                </p>
+              </div>
+              <Checkbox
+                checked={watch("showOnTimeline")}
+                onCheckedChange={(checked) =>
+                  setValue("showOnTimeline", Boolean(checked))
+                }
+              />
+            </div>
+            {watch("showOnTimeline") && (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="timeline-note">Timeline note (optional)</Label>
+                <Input
+                  id="timeline-note"
+                  placeholder="e.g., Client deliverable due"
+                  {...register("timelineLabel")}
+                  maxLength={120}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Defaults to the action title if left blank.
+                </p>
               </div>
             )}
           </div>
