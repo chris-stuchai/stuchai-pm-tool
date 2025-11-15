@@ -115,7 +115,7 @@ export function ClientBillingCard({ clientId, contracts, canEdit }: ClientBillin
                           {invoice.status}
                         </Badge>
                         {invoice.externalUrl && (
-                          <Button asChild size="xs" variant="link">
+                          <Button asChild size="sm" variant="link" className="h-7 px-2 text-xs">
                             <a href={invoice.externalUrl} target="_blank" rel="noopener noreferrer">
                               View
                             </a>

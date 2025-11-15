@@ -85,7 +85,7 @@ interface AdminActionBoardProps {
   items: ActionItem[]
   canEdit: boolean
   currentUserRole: Role
-  teammates: { id: string; name: string | null; email: string }[]
+  teammates?: { id: string; name: string | null; email: string }[]
 }
 
 interface ActionGroup {
@@ -103,7 +103,7 @@ export function AdminActionBoard({
   items,
   canEdit,
   currentUserRole,
-  teammates,
+  teammates = [],
 }: AdminActionBoardProps) {
   const groups = useMemo<ActionGroup[]>(() => {
     const now = Date.now()

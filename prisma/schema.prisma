@@ -200,7 +200,7 @@ model VerificationToken {
 model Client {
   id        String   @id @default(cuid())
   name      String
-  email     String
+  email     String   @unique
   company   String?
   phone     String?
   notes     String?  @db.Text

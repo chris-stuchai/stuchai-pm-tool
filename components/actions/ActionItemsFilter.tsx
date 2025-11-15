@@ -273,6 +273,7 @@ export function ActionItemsFilter({
           items={filteredItems}
           canEdit={canEdit}
           currentUserRole={currentUserRole}
+          teammates={teammates}
         />
       )}
     </div>
