@@ -12,6 +12,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatDate } from "@/lib/utils"
 import { UserRole } from "@prisma/client"
 import { CheckCircle2, XCircle } from "lucide-react"
+import { EditUserDialog } from "./EditUserDialog"
 
 interface User {
   id: string
@@ -46,6 +58,7 @@ interface UserManagementTableProps {
 export function UserManagementTable({ users, currentUserId }: UserManagementTableProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const router = useRouter()
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setLoading(userId)
@@ -67,6 +80,28 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
       alert(error instanceof Error ? error.message : "Failed to update role")
     } finally {
       setLoading(null)
+    }
+  }
+
+  const handleDelete = async (userId: string) => {
+    setLoading(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to delete user")
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting user:", error)
+      alert(error instanceof Error ? error.message : "Failed to delete user")
+    } finally {
+      setLoading(null)
+      setDeletingUserId(null)
     }
   }
 
@@ -118,6 +153,7 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
             <TableHead>Joined</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Change Role</TableHead>
+          <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -187,6 +223,52 @@ export function UserManagementTable({ users, currentUserId }: UserManagementTabl
                     </SelectContent>
                   </Select>
                 )}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-2">
+                  <EditUserDialog user={user}>
+                    <Button variant="outline" size="sm">
+                      Edit
+                    </Button>
+                  </EditUserDialog>
+                  {user.id !== currentUserId && (
+                    <AlertDialog
+                      open={deletingUserId === user.id}
+                      onOpenChange={(open) =>
+                        setDeletingUserId(open ? user.id : null)
+                      }
+                    >
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-destructive text-destructive hover:bg-destructive/10"
+                        >
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete user</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove the account and all of
+                            its sessions. Are you sure?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(user.id)}
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                            disabled={loading === user.id}
+                          >
+                            Confirm
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
