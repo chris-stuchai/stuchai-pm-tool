@@ -13,6 +13,7 @@ import { ProjectActionItems } from "@/components/projects/ProjectActionItems"
 import { EditProjectDialog } from "@/components/projects/EditProjectDialog"
 import { UserRole } from "@prisma/client"
 import { calculateProjectProgress } from "@/lib/projects"
+import { ProjectTimeline } from "@/components/projects/ProjectTimeline"
 
 async function getProject(id: string) {
   const project = await db.project.findUnique({
@@ -79,6 +80,9 @@ export default async function ProjectDetailPage({
     actionItems: project.actionItems,
     milestones: project.milestones ?? [],
     status: project.status,
+    startDate: project.startDate,
+    dueDate: project.dueDate,
+    progress: project.progress,
   })
   const hasSegments = (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
   const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
@@ -159,9 +163,33 @@ export default async function ProjectDetailPage({
               </div>
               <div className="text-sm text-muted-foreground">Pending</div>
             </div>
+            {project.completionSummary && (
+              <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Completion Summary</p>
+                <p>{project.completionSummary}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Timeline</CardTitle>
+          <CardDescription>
+            Track milestones, deliverables, and key dates for this project.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectTimeline
+            projectId={project.id}
+            milestones={project.milestones}
+            startDate={project.startDate}
+            dueDate={project.dueDate}
+            canEdit={canEdit}
+          />
+        </CardContent>
+      </Card>
 
       <ProjectActionItems projectId={project.id} actionItems={project.actionItems} canEdit={canEdit} />
     </div>

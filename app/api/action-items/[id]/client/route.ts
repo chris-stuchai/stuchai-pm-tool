@@ -56,6 +56,8 @@ export async function PATCH(
           name: attachment.name,
           url: attachment.url,
           uploadedBy: session.user.id,
+          mimeType: attachment?.mimeType,
+          size: attachment?.size,
         },
       })
     }

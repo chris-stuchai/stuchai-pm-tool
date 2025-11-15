@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
 /**
- * Update user profile information
+ * Update user profile information or notification preferences
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -14,24 +14,41 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name } = body
+    const { name, notifyOnClientMessage } = body
 
-    if (!name || name.trim() === "") {
+    const data: Record<string, unknown> = {}
+
+    if (name !== undefined) {
+      if (!name || name.trim() === "") {
+        return NextResponse.json(
+          { error: "Name is required" },
+          { status: 400 }
+        )
+      }
+      data.name = name.trim()
+    }
+
+    if (notifyOnClientMessage !== undefined) {
+      data.notifyOnClientMessage = !!notifyOnClientMessage
+    }
+
+    if (Object.keys(data).length === 0) {
       return NextResponse.json(
-        { error: "Name is required" },
+        { error: "No updates provided" },
         { status: 400 }
       )
     }
 
     const updatedUser = await db.user.update({
       where: { id: session.user.id },
-      data: { name: name.trim() },
+      data,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
         image: true,
+        notifyOnClientMessage: true,
       },
     })
 

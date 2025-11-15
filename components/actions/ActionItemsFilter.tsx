@@ -40,6 +40,8 @@ interface ActionItem {
     id: string
     name: string
     url: string
+    mimeType?: string | null
+    size?: number | null
   }>
 }
 
@@ -49,12 +51,14 @@ interface ActionItemsFilterProps {
   initialItems: ActionItem[]
   canEdit: boolean
   currentUserRole: Role
+  currentUserId: string
 }
 
 export function ActionItemsFilter({
   initialItems,
   canEdit,
   currentUserRole,
+  currentUserId,
 }: ActionItemsFilterProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
@@ -106,6 +110,23 @@ export function ActionItemsFilter({
     })
     return Array.from(projectMap.values())
   }, [initialItems])
+
+  const isClientView = currentUserRole === "CLIENT"
+
+  const myTasks = useMemo(() => {
+    if (!isClientView) return filteredItems
+    return filteredItems.filter(
+      (item) =>
+        item.assignee?.id === currentUserId ||
+        (item.visibleToClient && item.clientCanComplete)
+    )
+  }, [filteredItems, isClientView, currentUserId])
+
+  const teamTasks = useMemo(() => {
+    if (!isClientView) return []
+    const myTaskIds = new Set(myTasks.map((task) => task.id))
+    return filteredItems.filter((item) => !myTaskIds.has(item.id))
+  }, [filteredItems, isClientView, myTasks])
 
   return (
     <div className="space-y-4">
@@ -171,15 +192,50 @@ export function ActionItemsFilter({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
-          <ActionItemList
-            actionItems={filteredItems}
-            canEdit={canEdit}
-            currentUserRole={currentUserRole}
-          />
-        </CardContent>
-      </Card>
+      {isClientView ? (
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold">My Tasks • Need My Attention</h2>
+                <p className="text-sm text-muted-foreground">
+                  Tasks assigned to you or items your team asked you to complete.
+                </p>
+              </div>
+              <ActionItemList
+                actionItems={myTasks}
+                canEdit={false}
+                currentUserRole={currentUserRole}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold">What Your StuchAI Team Is Working On</h2>
+                <p className="text-sm text-muted-foreground">
+                  Transparent view of internal tasks so you know what&apos;s in progress.
+                </p>
+              </div>
+              <ActionItemList
+                actionItems={teamTasks}
+                canEdit={false}
+                currentUserRole={currentUserRole}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <ActionItemList
+              actionItems={filteredItems}
+              canEdit={canEdit}
+              currentUserRole={currentUserRole}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

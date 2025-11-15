@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, Priority } from "@prisma/client"
+import { UserRole, ActionItemStatus, ActivityEntityType } from "@prisma/client"
+import { logActivity } from "@/lib/activity"
 
 export async function GET(
   request: NextRequest,
@@ -207,6 +208,27 @@ export async function PATCH(
       },
     })
 
+    if (Object.keys(updateData).length > 0) {
+      const changes = Object.keys(updateData).reduce<Record<string, { previous: unknown; current: unknown }>>(
+        (acc, key) => {
+          acc[key] = {
+            previous: (actionItem as any)[key],
+            current: (updated as any)[key],
+          }
+          return acc
+        },
+        {}
+      )
+
+      await logActivity({
+        entityType: ActivityEntityType.ACTION_ITEM,
+        entityId: updated.id,
+        action: "updated",
+        changes,
+        userId: session.user.id,
+      })
+    }
+
     return NextResponse.json(updated)
   } catch (error) {
     console.error("Error updating action item:", error)
@@ -232,8 +254,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    await db.actionItem.delete({
+    const deleted = await db.actionItem.delete({
       where: { id: params.id },
+    })
+
+    await logActivity({
+      entityType: ActivityEntityType.ACTION_ITEM,
+      entityId: deleted.id,
+      action: "deleted",
+      userId: session.user.id,
+      metadata: {
+        title: deleted.title,
+      },
     })
 
     return NextResponse.json({ success: true })

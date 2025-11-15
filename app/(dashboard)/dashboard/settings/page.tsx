@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, AlertCircle, Mail, Calendar, HardDrive } from "lucide-react"
+import { NotificationPreferences } from "@/components/settings/NotificationPreferences"
+import { UserRole } from "@prisma/client"
 import { ReconnectGoogleButton } from "@/components/settings/ReconnectGoogleButton"
 import { EditableProfile } from "@/components/settings/EditableProfile"
 
@@ -49,7 +51,15 @@ export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  const googleStatus = await getGoogleAccountStatus(session.user.id)
+  const [googleStatus, userRecord] = await Promise.all([
+    getGoogleAccountStatus(session.user.id),
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        notifyOnClientMessage: true,
+      },
+    }),
+  ])
 
   return (
     <div className="space-y-6">
@@ -72,6 +82,20 @@ export default async function SettingsPage() {
             />
           </CardContent>
         </Card>
+
+        {(session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>Choose how you want to be notified</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NotificationPreferences
+                notifyOnClientMessage={userRecord?.notifyOnClientMessage ?? true}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

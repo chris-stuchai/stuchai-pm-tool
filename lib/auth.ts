@@ -70,14 +70,16 @@ export const authOptions: NextAuthOptions = {
           session.user.id = user.id
           const dbUser = await db.user.findUnique({
             where: { id: user.id },
-            select: { role: true },
+            select: { role: true, notifyOnClientMessage: true },
           })
           session.user.role = dbUser?.role || UserRole.CLIENT
+          session.user.notifyOnClientMessage = dbUser?.notifyOnClientMessage ?? true
         } 
         // For credentials (JWT)
         else if (token) {
           session.user.id = token.id as string
           session.user.role = (token.role as UserRole) || UserRole.CLIENT
+          session.user.notifyOnClientMessage = (token.notifyOnClientMessage as boolean) ?? true
         }
       }
       return session
@@ -91,10 +93,17 @@ export const authOptions: NextAuthOptions = {
           // Fetch role from database
           const dbUser = await db.user.findUnique({
             where: { id: user.id },
-            select: { role: true },
+            select: { role: true, notifyOnClientMessage: true },
           })
           token.role = dbUser?.role || UserRole.CLIENT
+          token.notifyOnClientMessage = dbUser?.notifyOnClientMessage ?? true
         }
+      } else if (!token.notifyOnClientMessage) {
+        const dbUser = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { notifyOnClientMessage: true },
+        })
+        token.notifyOnClientMessage = dbUser?.notifyOnClientMessage ?? true
       }
       return token
     },

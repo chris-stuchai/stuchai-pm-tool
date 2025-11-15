@@ -101,6 +101,7 @@ export default async function ActionItemsPage() {
         initialItems={actionItems}
         canEdit={canCreate}
         currentUserRole={session.user.role}
+        currentUserId={session.user.id}
       />
     </div>
   )

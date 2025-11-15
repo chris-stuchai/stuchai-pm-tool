@@ -51,6 +51,9 @@ export function ClientMessages({
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState("")
+  const [savingEdit, setSavingEdit] = useState(false)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -111,6 +114,44 @@ export function ClientMessages({
     }
   }
 
+  const startEditing = (message: Message) => {
+    setEditingMessageId(message.id)
+    setEditingContent(message.content)
+  }
+
+  const cancelEditing = () => {
+    setEditingMessageId(null)
+    setEditingContent("")
+    setSavingEdit(false)
+  }
+
+  const handleEditSave = async (messageId: string) => {
+    if (!editingContent.trim()) {
+      return
+    }
+
+    setSavingEdit(true)
+    try {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editingContent }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update message")
+      }
+
+      cancelEditing()
+      fetchMessages()
+    } catch (error) {
+      console.error("Error updating message:", error)
+      alert("Failed to update message")
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   const getInitials = (name: string | null, email: string) => {
     if (name) {
       return name
@@ -148,6 +189,7 @@ export function ClientMessages({
             messages.map((message) => {
               const isOwn = message.sender.id === currentUserId
               const hasMentions = message.mentions.length > 0
+              const isEditing = editingMessageId === message.id
 
               return (
                 <div
@@ -188,6 +230,47 @@ export function ClientMessages({
                         </div>
                       )}
                     </div>
+                    {message.sender.id === currentUserId && !isEditing && (
+                      <div className={`mt-2 ${isOwn ? "text-right" : ""}`}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-2 py-1 text-xs"
+                          onClick={() => startEditing(message)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    )}
+                    {isEditing && (
+                      <div className="mt-2 space-y-2">
+                        <Textarea
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          rows={3}
+                        />
+                        <div className={`flex gap-2 ${isOwn ? "justify-end" : ""}`}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleEditSave(message.id)}
+                            disabled={savingEdit || !editingContent.trim()}
+                          >
+                            {savingEdit ? "Saving..." : "Save"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={cancelEditing}
+                            disabled={savingEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

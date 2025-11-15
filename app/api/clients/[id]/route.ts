@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { UserRole, ActivityEntityType } from "@prisma/client"
+import { logActivity } from "@/lib/activity"
 
 export async function GET(
   request: NextRequest,
@@ -61,18 +62,27 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const existing = await db.client.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 })
+    }
+
     const body = await request.json()
     const { name, email, company, phone, notes } = body
 
+    const updateData: Record<string, any> = {}
+    if (name !== undefined) updateData.name = name
+    if (email !== undefined) updateData.email = email
+    if (company !== undefined) updateData.company = company
+    if (phone !== undefined) updateData.phone = phone
+    if (notes !== undefined) updateData.notes = notes
+
     const client = await db.client.update({
       where: { id: params.id },
-      data: {
-        ...(name && { name }),
-        ...(email && { email }),
-        ...(company !== undefined && { company }),
-        ...(phone !== undefined && { phone }),
-        ...(notes !== undefined && { notes }),
-      },
+      data: updateData,
       include: {
         creator: {
           select: {
@@ -83,6 +93,27 @@ export async function PATCH(
         },
       },
     })
+
+    if (Object.keys(updateData).length > 0) {
+      const changes = Object.keys(updateData).reduce<Record<string, { previous: unknown; current: unknown }>>(
+        (acc, key) => {
+          acc[key] = {
+            previous: (existing as any)[key],
+            current: (client as any)[key],
+          }
+          return acc
+        },
+        {}
+      )
+
+      await logActivity({
+        entityType: ActivityEntityType.CLIENT,
+        entityId: client.id,
+        action: "updated",
+        changes,
+        userId: session.user.id,
+      })
+    }
 
     return NextResponse.json(client)
   } catch (error) {

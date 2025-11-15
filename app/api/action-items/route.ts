@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, Priority } from "@prisma/client"
+import { UserRole, ActionItemStatus, Priority, ActivityEntityType } from "@prisma/client"
+import { logActivity } from "@/lib/activity"
 
 export async function GET(request: NextRequest) {
   try {
@@ -221,6 +222,17 @@ export async function POST(request: NextRequest) {
           })),
       })
     }
+
+    await logActivity({
+      entityType: ActivityEntityType.ACTION_ITEM,
+      entityId: actionItem.id,
+      action: "created",
+      metadata: {
+        title: actionItem.title,
+        projectId: actionItem.projectId,
+      },
+      userId: session.user.id,
+    })
 
     return NextResponse.json(actionItem, { status: 201 })
   } catch (error) {

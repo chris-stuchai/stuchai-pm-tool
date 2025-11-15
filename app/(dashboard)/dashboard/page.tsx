@@ -505,6 +505,9 @@ export default async function DashboardPage() {
                     actionItems: project.actionItems,
                     milestones: project.milestones || [],
                     status: project.status,
+                    startDate: project.startDate,
+                    dueDate: project.dueDate,
+                    progress: project.progress,
                   })
                   const hasSegments =
                     (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ProjectStatus } from "@prisma/client"
+import { UserRole, ActivityEntityType, ProjectStatus } from "@prisma/client"
+import { logActivity } from "@/lib/activity"
 
 export async function GET(
   request: NextRequest,
@@ -82,8 +83,16 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const existing = await db.project.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 })
+    }
+
     const body = await request.json()
-    const { name, description, status, progress, dueDate, startDate, completedAt } = body
+    const { name, description, status, progress, dueDate, startDate, completedAt, completionSummary } = body
 
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
@@ -93,6 +102,18 @@ export async function PATCH(
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null
     if (completedAt !== undefined) updateData.completedAt = completedAt ? new Date(completedAt) : null
+    if (completionSummary !== undefined) updateData.completionSummary = completionSummary
+
+    if (
+      status === ProjectStatus.COMPLETED &&
+      existing.status !== ProjectStatus.COMPLETED &&
+      !(completionSummary ?? existing.completionSummary)?.trim()
+    ) {
+      return NextResponse.json(
+        { error: "Project completion summary is required when marking complete." },
+        { status: 400 }
+      )
+    }
 
     const project = await db.project.update({
       where: { id: params.id },
@@ -108,6 +129,39 @@ export async function PATCH(
         },
       },
     })
+
+    if (Object.keys(updateData).length > 0) {
+      const changes = Object.keys(updateData).reduce<Record<string, { previous: unknown; current: unknown }>>(
+        (acc, key) => {
+          acc[key] = {
+            previous: (existing as any)[key],
+            current: (project as any)[key],
+          }
+          return acc
+        },
+        {}
+      )
+
+      await logActivity({
+        entityType: ActivityEntityType.PROJECT,
+        entityId: project.id,
+        action: "updated",
+        changes,
+        userId: session.user.id,
+      })
+    }
+
+    if (status === ProjectStatus.COMPLETED && existing.status !== ProjectStatus.COMPLETED) {
+      await logActivity({
+        entityType: ActivityEntityType.PROJECT,
+        entityId: project.id,
+        action: "completed",
+        metadata: {
+          completionSummary: completionSummary ?? project.completionSummary,
+        },
+        userId: session.user.id,
+      })
+    }
 
     return NextResponse.json(project)
   } catch (error) {

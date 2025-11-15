@@ -15,7 +15,8 @@ import {
   Calendar,
   MessageSquare,
   FileText,
-  UserCog
+  UserCog,
+  ClipboardList
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,7 @@ const adminNavigation = [
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
   { name: "Action Items", href: "/dashboard/actions", icon: CheckSquare },
+  { name: "Forms", href: "/dashboard/forms", icon: ClipboardList },
   { name: "Meetings", href: "/dashboard/meetings", icon: Calendar },
   { name: "My Tasks", href: "/dashboard/personal-tasks", icon: ListTodo },
   { name: "User Management", href: "/dashboard/users", icon: UserCog },
@@ -39,6 +41,7 @@ const clientNavigation = [
   { name: "My Projects", href: "/dashboard/projects", icon: FolderKanban },
   { name: "My Tasks", href: "/dashboard/actions", icon: CheckSquare },
   { name: "Meetings", href: "/dashboard/meetings", icon: Calendar },
+  { name: "Forms", href: "/dashboard/forms", icon: ClipboardList },
   { name: "Documents", href: "/dashboard/documents", icon: FileText },
   { name: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
@@ -59,7 +62,11 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+          const isDashboardRoot = item.href === "/dashboard"
+          const isActive =
+            pathname === item.href ||
+            (!isDashboardRoot && pathname?.startsWith(`${item.href}/`))
+
           return (
             <Link
               key={item.name}

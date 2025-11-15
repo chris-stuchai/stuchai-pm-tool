@@ -66,6 +66,31 @@ enum DeliverableStatus {
   COMPLETED
 }
 
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  SELECT
+  FILE
+}
+
+enum FormAssignmentStatus {
+  PENDING
+  SUBMITTED
+  REVIEWED
+}
+
+enum ActivityEntityType {
+  PROJECT
+  CLIENT
+  ACTION_ITEM
+  MESSAGE
+  DOCUMENT
+  DELIVERABLE
+  MEETING
+  FORM
+  OTHER
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -78,6 +103,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   active        Boolean   @default(true)
+  notifyOnClientMessage Boolean @default(true)
 
   // Relations
   accounts            Account[]
@@ -98,6 +124,10 @@ model User {
   createdUserInvitations UserInvitation[]  @relation("UserInvitationCreator")
   uploadedDeliverables Deliverable[]       @relation("DeliverableUploader")
   actionItemUploads  ActionItemAttachment[] @relation("ActionItemAttachmentUploader")
+  activityLogs ActivityLog[]               @relation("ActivityAuthor")
+  formTemplates FormTemplate[]             @relation("FormTemplateCreator")
+  assignedForms FormAssignment[]           @relation("FormAssignmentCreator")
+  formSubmissions FormSubmission[]         @relation("FormSubmissionUser")
 
   @@map("users")
 }
@@ -159,6 +189,7 @@ model Client {
   messages  Message[]
   meetings  Meeting[]
   deliverables Deliverable[]
+  formAssignments FormAssignment[]
   active    Boolean   @default(true)
   invitation ClientInvitation?
 
@@ -174,6 +205,7 @@ model Project {
   dueDate     DateTime?
   startDate   DateTime?
   completedAt DateTime?
+  completionSummary String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   clientId    String
@@ -188,6 +220,7 @@ model Project {
   messages     Message[]
   meetings     Meeting[]
   deliverables Deliverable[]
+  formAssignments FormAssignment[]
 
   @@map("projects")
 }
@@ -406,6 +439,8 @@ model ActionItemAttachment {
   url          String
   uploadedBy   String?
   createdAt    DateTime @default(now())
+  mimeType     String?
+  size         Int?
 
   actionItem ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   uploader   User?      @relation("ActionItemAttachmentUploader", fields: [uploadedBy], references: [id])
@@ -446,5 +481,98 @@ model UserInvitation {
   creator   User?    @relation("UserInvitationCreator", fields: [createdBy], references: [id])
 
   @@map("user_invitations")
+}
+
+model ActivityLog {
+  id          String              @id @default(cuid())
+  entityType  ActivityEntityType
+  entityId    String
+  action      String
+  changes     Json?
+  metadata    Json?
+  createdBy   String?
+  createdAt   DateTime            @default(now())
+
+  author User? @relation("ActivityAuthor", fields: [createdBy], references: [id])
+
+  @@index([entityType, entityId], name: "activity_entity_idx")
+  @@map("activity_logs")
+}
+
+model FormTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  fields      FormField[]
+  assignments FormAssignment[]
+
+  creator User @relation("FormTemplateCreator", fields: [createdBy], references: [id])
+
+  @@map("form_templates")
+}
+
+model FormField {
+  id         String        @id @default(cuid())
+  templateId String
+  label      String
+  type       FormFieldType
+  required   Boolean       @default(false)
+  order      Int           @default(0)
+  options    Json?
+
+  template FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("form_fields")
+}
+
+model FormAssignment {
+  id         String                @id @default(cuid())
+  templateId String
+  clientId   String
+  projectId  String?
+  assignedBy String
+  status     FormAssignmentStatus  @default(PENDING)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  submissions FormSubmission[]
+
+  template FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  client   Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project  Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator  User         @relation("FormAssignmentCreator", fields: [assignedBy], references: [id])
+
+  @@map("form_assignments")
+}
+
+model FormSubmission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  submittedBy  String?
+  submittedAt  DateTime @default(now())
+  responses    Json
+
+  assignment FormAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  submitter  User?          @relation("FormSubmissionUser", fields: [submittedBy], references: [id])
+  attachments FormSubmissionAttachment[]
+
+  @@map("form_submissions")
+}
+
+model FormSubmissionAttachment {
+  id            String   @id @default(cuid())
+  submissionId  String
+  name          String
+  url           String
+  mimeType      String?
+  size          Int?
+  fieldId       String?
+  createdAt     DateTime @default(now())
+
+  submission FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("form_submission_attachments")
 }
 

@@ -30,9 +30,9 @@ const projectSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   status: z.enum(["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED"]).optional(),
-  progress: z.number().min(0).max(100).optional(),
   dueDate: z.string().optional(),
   startDate: z.string().optional(),
+  completionSummary: z.string().optional(),
 })
 
 type ProjectFormData = z.infer<typeof projectSchema>
@@ -42,9 +42,9 @@ interface Project {
   name: string
   description: string | null
   status: string
-  progress: number
   dueDate: Date | null
   startDate: Date | null
+  completionSummary: string | null
 }
 
 interface EditProjectDialogProps {
@@ -69,9 +69,9 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
       name: project.name,
       description: project.description || "",
       status: project.status as any,
-      progress: project.progress,
       dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split("T")[0] : "",
       startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
+      completionSummary: project.completionSummary || "",
     },
   })
 
@@ -81,9 +81,9 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
         name: project.name,
         description: project.description || "",
         status: project.status as any,
-        progress: project.progress,
         dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split("T")[0] : "",
         startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
+        completionSummary: project.completionSummary || "",
       })
     }
   }, [open, project, reset])
@@ -91,6 +91,12 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
   const onSubmit = async (data: ProjectFormData) => {
     setLoading(true)
     try {
+      if (data.status === "COMPLETED") {
+        if (!data.completionSummary || data.completionSummary.trim().length < 10) {
+          throw new Error("Please add a short completion summary (at least 10 characters).")
+        }
+      }
+
       const response = await fetch(`/api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -164,16 +170,6 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="progress">Progress (%)</Label>
-              <Input
-                id="progress"
-                type="number"
-                min="0"
-                max="100"
-                {...register("progress", { valueAsNumber: true })}
-              />
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="startDate">Start Date</Label>
@@ -192,6 +188,17 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
                 />
               </div>
             </div>
+            {watch("status") === "COMPLETED" && (
+              <div className="grid gap-2">
+                <Label htmlFor="completionSummary">Completion Summary *</Label>
+                <Textarea
+                  id="completionSummary"
+                  placeholder="Summarize the outcome, deliverables, or next steps..."
+                  rows={4}
+                  {...register("completionSummary")}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

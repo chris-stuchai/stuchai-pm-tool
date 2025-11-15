@@ -10,17 +10,20 @@ declare module "next-auth" {
       name?: string | null
       image?: string | null
       role: UserRole
+      notifyOnClientMessage?: boolean
     }
   }
 
   interface User {
     role: UserRole
+    notifyOnClientMessage?: boolean
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     role: UserRole
+    notifyOnClientMessage?: boolean
   }
 }
 

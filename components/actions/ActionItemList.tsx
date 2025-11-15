@@ -22,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { UploadAttachmentDialog } from "./UploadAttachmentDialog"
+import { Label } from "@/components/ui/label"
 
 interface ActionItem {
   id: string
@@ -50,6 +52,8 @@ interface ActionItem {
     id: string
     name: string
     url: string
+    mimeType?: string | null
+    size?: number | null
   }>
 }
 
@@ -73,6 +77,7 @@ const statusIcons = {
   OVERDUE: AlertCircle,
 }
 
+/** Displays a detailed list of action items with status, reminder, and attachment controls. */
 export function ActionItemList({
   actionItems,
   canEdit,
@@ -85,6 +90,7 @@ export function ActionItemList({
   const [attachmentModal, setAttachmentModal] = useState<{ id: string; title: string } | null>(null)
   const [attachmentForm, setAttachmentForm] = useState({ name: "", url: "" })
   const [attachmentSubmitting, setAttachmentSubmitting] = useState(false)
+  const [clientFile, setClientFile] = useState<File | null>(null)
 
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     setUpdating(itemId)
@@ -153,15 +159,46 @@ export function ActionItemList({
     }
   }
 
+  /** Uploads a client-provided file before attaching it to the action item. */
+  const uploadClientFile = async (actionItemId: string, file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("folder", `action-items/${actionItemId}`)
+    const uploadResponse = await fetch("/api/uploads", {
+      method: "POST",
+      body: formData,
+    })
+    if (!uploadResponse.ok) {
+      throw new Error("Failed to upload file")
+    }
+    return uploadResponse.json()
+  }
+
   const handleAttachmentSubmit = async () => {
-    if (!attachmentModal || !attachmentForm.name || !attachmentForm.url) return
+    if (!attachmentModal) return
+
+    if (!clientFile && (!attachmentForm.name || !attachmentForm.url)) {
+      alert("Upload a file or provide a link.")
+      return
+    }
+
     setAttachmentSubmitting(true)
     try {
+      let payload = { ...attachmentForm }
+      if (clientFile) {
+        const uploaded = await uploadClientFile(attachmentModal.id, clientFile)
+        payload = {
+          name: uploaded.name,
+          url: uploaded.url,
+          mimeType: uploaded.mimeType,
+          size: uploaded.size,
+        }
+      }
       const response = await fetch(`/api/action-items/${attachmentModal.id}/client`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          attachment: { ...attachmentForm },
+          attachment: payload,
         }),
       })
       if (!response.ok) {
@@ -169,6 +206,7 @@ export function ActionItemList({
       }
       setAttachmentModal(null)
       setAttachmentForm({ name: "", url: "" })
+      setClientFile(null)
       router.refresh()
     } catch (error) {
       console.error("Error uploading attachment:", error)
@@ -288,17 +326,28 @@ export function ActionItemList({
               {item.attachments && item.attachments.length > 0 && (
                 <div className="mt-3 space-y-1">
                   {item.attachments.map((attachment) => (
-                    <a
-                      key={attachment.id}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center text-xs text-primary hover:underline"
-                    >
-                      <Paperclip className="mr-1 h-3 w-3" />
-                      {attachment.name}
-                    </a>
+                    <div key={attachment.id} className="flex items-center justify-between text-xs">
+                      <a
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-primary hover:underline"
+                      >
+                        <Paperclip className="mr-1 h-3 w-3" />
+                        {attachment.name}
+                      </a>
+                      {attachment.size && (
+                        <span className="text-muted-foreground">
+                          {(attachment.size / 1024).toFixed(1)} KB
+                        </span>
+                      )}
+                    </div>
                   ))}
+                </div>
+              )}
+              {canEdit && (
+                <div className="pt-2">
+                  <UploadAttachmentDialog actionItemId={item.id} onUploaded={() => router.refresh()} />
                 </div>
               )}
               {currentUserRole === "CLIENT" && item.visibleToClient && (
@@ -336,6 +385,7 @@ export function ActionItemList({
           if (!open) {
             setAttachmentModal(null)
             setAttachmentForm({ name: "", url: "" })
+            setClientFile(null)
           }
         }}
       >
@@ -344,6 +394,24 @@ export function ActionItemList({
             <DialogTitle>Add Attachment</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="client-upload">Upload a file</Label>
+              <Input
+                id="client-upload"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setClientFile(file)
+                  if (file) {
+                    setAttachmentForm((prev) => ({ ...prev, name: file.name }))
+                  }
+                }}
+              />
+              {clientFile && (
+                <p className="text-xs text-muted-foreground">{clientFile.name}</p>
+              )}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">or paste a link below</p>
             <Input
               placeholder="Attachment name"
               value={attachmentForm.name}

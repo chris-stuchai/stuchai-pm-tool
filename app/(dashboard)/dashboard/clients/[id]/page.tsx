@@ -17,7 +17,56 @@ import { ClientStatusToggle } from "@/components/clients/ClientStatusToggle"
 import { UserRole } from "@prisma/client"
 import { calculateProjectProgress } from "@/lib/projects"
 import { DeliverablesCard } from "@/components/deliverables/DeliverablesCard"
+import { FormAssignmentList } from "@/components/forms/FormAssignmentList"
+import { SerializedFormAssignment, SerializedFormField } from "@/types/forms"
 
+/** Converts Prisma form fields into serializable payloads for client components. */
+const serializeFields = (fields: any[]): SerializedFormField[] =>
+  fields.map((field: any) => ({
+    id: field.id,
+    label: field.label,
+    type: field.type,
+    required: field.required,
+    options: field.options,
+  }))
+
+/** Converts form assignments with nested relations into client-safe objects. */
+const serializeAssignments = (assignments: any[]): SerializedFormAssignment[] =>
+  assignments.map((assignment: any) => ({
+    id: assignment.id,
+    status: assignment.status,
+    createdAt: assignment.createdAt.toISOString(),
+    client: {
+      id: assignment.client.id,
+      name: assignment.client.name,
+      company: assignment.client.company,
+    },
+    project: assignment.project
+      ? {
+          id: assignment.project.id,
+          name: assignment.project.name,
+        }
+      : null,
+    template: {
+      id: assignment.template.id,
+      name: assignment.template.name,
+      fields: serializeFields(assignment.template.fields),
+    },
+    submissions: assignment.submissions.map((submission: any) => ({
+      id: submission.id,
+      submittedAt: submission.submittedAt.toISOString(),
+      responses: submission.responses,
+      submitter: submission.submitter
+        ? {
+            id: submission.submitter.id,
+            name: submission.submitter.name,
+            email: submission.submitter.email,
+          }
+        : null,
+    })),
+  }))
+
+/** Loads the full client record including projects, deliverables, and assigned forms. */
 async function getClient(id: string) {
   const client = await db.client.findUnique({
     where: { id },
@@ -56,12 +105,50 @@ async function getClient(id: string) {
           updatedAt: "desc",
         },
       },
+      formAssignments: {
+        include: {
+          template: {
+            include: {
+              fields: {
+                orderBy: { order: "asc" },
+              },
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              company: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          submissions: {
+            include: {
+              submitter: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: { submittedAt: "desc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   })
 
   return client
 }
 
+/** Client detail dashboard with documents, deliverables, forms, and messaging. */
 export default async function ClientDetailPage({
   params,
 }: {
@@ -76,6 +163,7 @@ export default async function ClientDetailPage({
   }
 
   const canEdit = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
+  const serializedAssignments = serializeAssignments(client.formAssignments ?? [])
 
   return (
     <div className="space-y-6">
@@ -163,6 +251,9 @@ export default async function ClientDetailPage({
                     actionItems: project.actionItems,
                     milestones: project.milestones ?? [],
                     status: project.status,
+                    startDate: project.startDate,
+                    dueDate: project.dueDate,
+                    progress: project.progress,
                   })
                   const hasSegments = (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
                   const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
@@ -193,24 +284,44 @@ export default async function ClientDetailPage({
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <ClientDocuments clientId={client.id} canEdit={canEdit} />
-          <DeliverablesCard
-            clientId={client.id}
-            canEdit={canEdit}
-            initialItems={client.deliverables}
-          />
-        </div>
-        <div className="lg:col-span-1">
-          <ClientMessages
-            clientId={client.id}
-            currentUserId={session.user.id}
-            disabled={!client.active}
-            isClientActive={client.active}
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2">
+        <ClientDocuments clientId={client.id} canEdit={canEdit} />
+        <DeliverablesCard
+          clientId={client.id}
+          canEdit={canEdit}
+          initialItems={client.deliverables}
+        />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Requests &amp; Forms</h2>
+              <p className="text-sm text-muted-foreground">
+                Track onboarding questionnaires and client checklists.
+              </p>
+            </div>
+            {canEdit && (
+              <Button variant="link" className="px-0" asChild>
+                <Link href="/dashboard/forms">Manage</Link>
+              </Button>
+            )}
+          </div>
+          <FormAssignmentList
+            assignments={serializedAssignments}
+            variant="compact"
+            allowStatusUpdates={false}
           />
         </div>
       </div>
+      <div className="lg:col-span-1">
+        <ClientMessages
+          clientId={client.id}
+          currentUserId={session.user.id}
+          disabled={!client.active}
+          isClientActive={client.active}
+        />
+      </div>
+    </div>
     </div>
   )
 }

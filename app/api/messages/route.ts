@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { UserRole, ActivityEntityType } from "@prisma/client"
+import { logActivity } from "@/lib/activity"
+import { sendClientMessageAlert } from "@/lib/notifications"
 
 export async function GET(request: NextRequest) {
   try {
@@ -172,6 +174,22 @@ export async function POST(request: NextRequest) {
           userId,
         })),
       })
+    }
+
+    await logActivity({
+      entityType: ActivityEntityType.MESSAGE,
+      entityId: message.id,
+      action: "created",
+      metadata: {
+        clientId,
+        projectId,
+        preview: content.slice(0, 140),
+      },
+      userId: session.user.id,
+    })
+
+    if (session.user.role === UserRole.CLIENT) {
+      await sendClientMessageAlert({ messageId: message.id })
     }
 
     return NextResponse.json(message, { status: 201 })
