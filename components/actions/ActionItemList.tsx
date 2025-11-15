@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip } from "lucide-react"
+import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { UploadAttachmentDialog } from "./UploadAttachmentDialog"
+import { EditActionItemDialog } from "./EditActionItemDialog"
 import { Label } from "@/components/ui/label"
 
 interface ActionItem {
@@ -30,8 +31,8 @@ interface ActionItem {
   title: string
   description: string | null
   status: string
-  priority: string
-  dueDate: Date | null
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+  dueDate: string | Date | null
   assignee: {
     id: string
     name: string | null
@@ -42,6 +43,7 @@ interface ActionItem {
     id: string
     name: string
     client: {
+      id?: string
       name: string
     }
   } | null
@@ -234,6 +236,20 @@ export function ActionItemList({
       {actionItems.map((item) => {
         const StatusIcon = statusIcons[item.status as keyof typeof statusIcons] || Circle
         const isOverdue = item.dueDate && new Date(item.dueDate) < new Date() && item.status !== "COMPLETED"
+        const priorityValue = (item.priority || "MEDIUM") as keyof typeof priorityColors
+        const editablePayload = {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          priority: item.priority,
+          dueDate: item.dueDate,
+          project: item.project ? { id: item.project.id, name: item.project.name } : null,
+          assignee: item.assignee
+            ? { id: item.assignee.id, name: item.assignee.name, email: item.assignee.email }
+            : null,
+          visibleToClient: item.visibleToClient,
+          clientCanComplete: item.clientCanComplete,
+        }
 
         return (
           <div
@@ -278,10 +294,8 @@ export function ActionItemList({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge
-                    className={priorityColors[item.priority as keyof typeof priorityColors] || ""}
-                  >
-                    {item.priority}
+                  <Badge className={priorityColors[priorityValue] || ""}>
+                    {item.priority || "MEDIUM"}
                   </Badge>
                   {canEdit && (
                     <>
@@ -311,6 +325,14 @@ export function ActionItemList({
                           <SelectItem value="OVERDUE">Overdue</SelectItem>
                         </SelectContent>
                       </Select>
+                      <EditActionItemDialog
+                        action={editablePayload}
+                        trigger={
+                          <Button variant="ghost" size="icon" title="Edit action">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </>
                   )}
                 </div>

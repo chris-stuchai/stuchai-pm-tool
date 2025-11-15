@@ -19,8 +19,8 @@ interface ActionItem {
   title: string
   description: string | null
   status: string
-  priority: string
-  dueDate: Date | null
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+  dueDate: string | Date | null
   assignee: {
     id: string
     name: string | null
@@ -88,7 +88,9 @@ export function ActionItemsFilter({
 
     // Priority filter
     if (priorityFilter !== "all") {
-      filtered = filtered.filter((item) => item.priority === priorityFilter)
+      filtered = filtered.filter(
+        (item) => (item.priority || "MEDIUM") === priorityFilter
+      )
     }
 
     // Project filter

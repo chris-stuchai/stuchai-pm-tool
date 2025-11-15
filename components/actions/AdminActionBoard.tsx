@@ -16,8 +16,8 @@ interface ActionItem {
   title: string
   description: string | null
   status: string
-  priority: string
-  dueDate: Date | null
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+  dueDate: string | Date | null
   assignee: {
     id: string
     name: string | null
