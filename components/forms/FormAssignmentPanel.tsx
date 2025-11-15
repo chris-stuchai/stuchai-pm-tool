@@ -128,14 +128,14 @@ export function FormAssignmentPanel({ clients, projects, templates }: FormAssign
         <div className="space-y-2">
           <Label>Project (optional)</Label>
           <Select
-            value={projectId || ""}
-            onValueChange={(value) => setProjectId(value || null)}
+            value={projectId ?? "none"}
+            onValueChange={(value) => setProjectId(value === "none" ? null : value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Link to a project" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No project</SelectItem>
+              <SelectItem value="none">No project</SelectItem>
               {projects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}

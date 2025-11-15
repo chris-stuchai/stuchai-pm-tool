@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { UserRole } from "@prisma/client"
 import { CreateActionItemDialog } from "@/components/actions/CreateActionItemDialog"
 import { ActionItemsFilter } from "@/components/actions/ActionItemsFilter"
+import { BulkImportDialog } from "@/components/actions/BulkImportDialog"
 
 async function getActionItems(userId: string, userRole: UserRole, email?: string | null) {
   const where: any = {}
@@ -89,12 +90,19 @@ export default async function ActionItemsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Action Items</h1>
-          <p className="text-gray-600 mt-1">Track and manage your tasks</p>
+          <p className="text-gray-600 mt-1">
+            Track and manage tasks across every client
+          </p>
         </div>
-        {canCreate && <CreateActionItemDialog />}
+        {canCreate && (
+          <div className="flex flex-wrap items-center gap-2">
+            <BulkImportDialog />
+            <CreateActionItemDialog />
+          </div>
+        )}
       </div>
 
       <ActionItemsFilter

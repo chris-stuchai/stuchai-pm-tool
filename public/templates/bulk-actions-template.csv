@@ -1,0 +1,5 @@
+Client Name,Client Email,Client Company,Project Name,Project Description,Project Status,Project Due Date (YYYY-MM-DD),Project Start Date (YYYY-MM-DD),Action Title,Action Description,Action Priority,Action Due Date (YYYY-MM-DD),Visible To Client (true/false),Client Can Complete (true/false)
+Acme Corp,ceo@acme.com,Acme Corporation,Website Relaunch,Full rebuild of marketing site,IN_PROGRESS,2025-06-30,2025-03-01,Upload Brand Assets,Client to upload logos and guidelines,HIGH,2025-03-10,true,true
+Acme Corp,ceo@acme.com,Acme Corporation,Website Relaunch,Full rebuild of marketing site,IN_PROGRESS,2025-06-30,2025-03-01,Finalize IA,Internal team to finalize information architecture,MEDIUM,2025-03-15,false,false
+Globex Inc,ops@globex.com,Globex Incorporated,AI Call Center Setup,Implement AI call center workflows,PLANNING,2025-09-01,2025-05-15,Document Current SOPs,Gather and upload all SOPs,HIGH,2025-05-25,true,true
+
