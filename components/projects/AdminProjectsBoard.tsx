@@ -1,6 +1,19 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState } from "react"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -9,10 +22,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react"
 
 export interface AdminProjectSummary {
   id: string
@@ -57,18 +69,42 @@ const toneStyles: Record<
 }
 
 export function AdminProjectsBoard({ groups }: AdminProjectsBoardProps) {
+  const router = useRouter()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     groups.slice(0, 3).reduce((acc, group) => {
       acc[group.clientId] = true
       return acc
     }, {} as Record<string, boolean>)
   )
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const toggleGroup = (clientId: string) => {
     setOpenGroups((prev) => ({
       ...prev,
       [clientId]: !prev[clientId],
     }))
+  }
+
+  const handleDelete = async () => {
+    if (!deletingProjectId) return
+    setDeleteLoading(true)
+    try {
+      const response = await fetch(`/api/projects/${deletingProjectId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to delete project")
+      }
+      setDeletingProjectId(null)
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting project:", error)
+      alert("Unable to delete the project. Please try again.")
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   if (groups.length === 0) {
@@ -130,11 +166,12 @@ export function AdminProjectsBoard({ groups }: AdminProjectsBoardProps) {
                         Open Tasks
                       </th>
                       <th className="pb-2 pr-4 font-medium">Due</th>
-                      <th className="pb-2 font-medium">Owner</th>
+                      <th className="pb-2 pr-4 font-medium">Owner</th>
+                      <th className="pb-2 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {group.projects.map((project) => (
+                  {group.projects.map((project) => (
                       <tr key={project.id} className="align-top">
                         <td className="py-3 pr-4">
                           <div className="font-medium text-gray-900">
@@ -170,21 +207,63 @@ export function AdminProjectsBoard({ groups }: AdminProjectsBoardProps) {
                             ? formatDate(project.dueDate)
                             : "—"}
                         </td>
-                        <td className="py-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{project.owner || "—"}</span>
-                            <Button
-                              asChild
-                              variant="ghost"
-                              size="sm"
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              <Link href={`/dashboard/projects/${project.id}`}>
-                                Open
-                              </Link>
-                            </Button>
-                          </div>
-                        </td>
+                      <td className="py-3 pr-4">{project.owner || "—"}</td>
+                      <td className="py-3 pr-0">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Link href={`/dashboard/projects/${project.id}`}>
+                              Open
+                            </Link>
+                          </Button>
+                          <AlertDialog
+                            open={deletingProjectId === project.id}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setDeletingProjectId(null)
+                              } else {
+                                setDeletingProjectId(project.id)
+                              }
+                            }}
+                          >
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This removes “{project.name}” plus its tasks and timeline. This
+                                  cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={deleteLoading}>
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-white hover:bg-destructive/90"
+                                  onClick={handleDelete}
+                                  disabled={deleteLoading}
+                                >
+                                  {deleteLoading ? "Deleting..." : "Delete Project"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
                       </tr>
                     ))}
                   </tbody>

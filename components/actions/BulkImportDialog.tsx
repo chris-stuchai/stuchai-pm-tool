@@ -25,6 +25,7 @@ export function BulkImportDialog() {
     clientsCreated: number
     projectsCreated: number
     actionItemsCreated: number
+    duplicatesSkipped: number
     errors: string[]
   }>(null)
 
@@ -138,6 +139,7 @@ export function BulkImportDialog() {
                 <li>Clients created: {result.clientsCreated}</li>
                 <li>Projects created: {result.projectsCreated}</li>
                 <li>Action items created: {result.actionItemsCreated}</li>
+                <li>Duplicates skipped: {result.duplicatesSkipped}</li>
               </ul>
               {result.errors.length > 0 && (
                 <div className="mt-2 space-y-1">

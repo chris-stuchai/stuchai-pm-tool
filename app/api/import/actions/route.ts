@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       clientsCreated: 0,
       projectsCreated: 0,
       actionItemsCreated: 0,
+      duplicatesSkipped: 0,
       rowsProcessed: 0,
       errors: [] as string[],
     }
@@ -180,6 +181,19 @@ export async function POST(request: NextRequest) {
         const priority = priorityMap.has(priorityRaw)
           ? (priorityRaw as Priority)
           : Priority.MEDIUM
+
+        const existingAction = await db.actionItem.findFirst({
+          where: {
+            projectId: project.id,
+            title: actionTitle,
+          },
+          select: { id: true },
+        })
+
+        if (existingAction) {
+          summary.duplicatesSkipped += 1
+          continue
+        }
 
         const actionItem = await db.actionItem.create({
           data: {

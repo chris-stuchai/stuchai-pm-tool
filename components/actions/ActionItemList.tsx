@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil } from "lucide-react"
+import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil, Trash2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -24,6 +24,17 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { UploadAttachmentDialog } from "./UploadAttachmentDialog"
 import { EditActionItemDialog } from "./EditActionItemDialog"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 
 interface ActionItem {
@@ -98,6 +109,8 @@ export function ActionItemList({
   }>({ name: "", url: "" })
   const [attachmentSubmitting, setAttachmentSubmitting] = useState(false)
   const [clientFile, setClientFile] = useState<File | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     setUpdating(itemId)
@@ -223,6 +236,27 @@ export function ActionItemList({
     }
   }
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      const response = await fetch(`/api/action-items/${deleteTarget}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to delete action item")
+      }
+      setDeleteTarget(null)
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting action item:", error)
+      alert("Unable to delete this action. Please try again.")
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   if (actionItems.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -333,6 +367,48 @@ export function ActionItemList({
                           </Button>
                         }
                       />
+                      <AlertDialog
+                        open={deleteTarget === item.id}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setDeleteTarget(null)
+                          } else {
+                            setDeleteTarget(item.id)
+                          }
+                        }}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            title="Delete action"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete action item?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove “{item.title}” and all of its attachments.
+                              This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={deleteLoading}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-white hover:bg-destructive/90"
+                              onClick={handleDelete}
+                              disabled={deleteLoading}
+                            >
+                              {deleteLoading ? "Deleting..." : "Delete"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </>
                   )}
                 </div>
