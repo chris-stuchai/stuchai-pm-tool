@@ -22,7 +22,7 @@ interface FormField {
   label: string
   type: "TEXT" | "TEXTAREA" | "SELECT" | "FILE"
   required: boolean
-  options?: string[]
+  options?: string[] | null
 }
 
 interface Assignment {

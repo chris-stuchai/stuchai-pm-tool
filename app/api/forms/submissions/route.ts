@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { FormAssignmentStatus, UserRole } from "@prisma/client"
+import { FormAssignmentStatus, UserRole, Prisma } from "@prisma/client"
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       data: {
         assignmentId,
         submittedBy: session.user.id,
-        responses,
+        responses: responses as Prisma.InputJsonValue,
       },
     })
 

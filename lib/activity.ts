@@ -1,5 +1,5 @@
 import { db } from "./db"
-import { ActivityEntityType } from "@prisma/client"
+import { ActivityEntityType, Prisma } from "@prisma/client"
 
 interface ActivityPayload {
   entityType: ActivityEntityType
@@ -19,13 +19,16 @@ export async function logActivity({
   userId,
 }: ActivityPayload) {
   try {
+    const changePayload = changes == null ? undefined : (changes as Prisma.InputJsonValue)
+    const metadataPayload = metadata == null ? undefined : (metadata as Prisma.InputJsonValue)
+
     await db.activityLog.create({
       data: {
         entityType,
         entityId,
         action,
-        changes: changes ?? undefined,
-        metadata: metadata ?? undefined,
+        changes: changePayload,
+        metadata: metadataPayload,
         createdBy: userId ?? undefined,
       },
     })

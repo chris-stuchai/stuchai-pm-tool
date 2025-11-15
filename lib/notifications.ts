@@ -17,9 +17,6 @@ async function getNotificationSenderUserId() {
         active: true,
       },
     },
-    orderBy: {
-      createdAt: "asc",
-    },
     select: {
       userId: true,
     },

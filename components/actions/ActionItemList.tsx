@@ -88,7 +88,12 @@ export function ActionItemList({
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
   const [clientUpdating, setClientUpdating] = useState<string | null>(null)
   const [attachmentModal, setAttachmentModal] = useState<{ id: string; title: string } | null>(null)
-  const [attachmentForm, setAttachmentForm] = useState({ name: "", url: "" })
+  const [attachmentForm, setAttachmentForm] = useState<{
+    name: string
+    url: string
+    mimeType?: string | null
+    size?: number | null
+  }>({ name: "", url: "" })
   const [attachmentSubmitting, setAttachmentSubmitting] = useState(false)
   const [clientFile, setClientFile] = useState<File | null>(null)
 

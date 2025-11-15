@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { UserRole, FormFieldType, Prisma } from "@prisma/client"
 
 export async function GET() {
   try {
@@ -71,9 +71,11 @@ export async function POST(request: NextRequest) {
         fields: {
           create: fields.map((field, index) => ({
             label: field.label.trim(),
-            type: field.type,
+            type: field.type as FormFieldType,
             required: Boolean(field.required),
-            options: field.options?.length ? field.options : null,
+            options: field.options?.length
+              ? (field.options as Prisma.InputJsonValue)
+              : Prisma.JsonNull,
             order: index,
           })),
         },
