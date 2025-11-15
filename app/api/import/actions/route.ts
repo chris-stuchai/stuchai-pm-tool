@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { parse } from "csv-parse/sync"
+import { Buffer } from "buffer"
 import {
   ProjectStatus,
   Priority,
@@ -54,14 +55,17 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get("file")
 
-    if (!(file instanceof File)) {
+    if (!(file && typeof (file as any).arrayBuffer === "function")) {
       return NextResponse.json(
         { error: "CSV file is required" },
         { status: 400 }
       )
     }
 
-    const csvText = await file.text()
+    const csvText =
+      typeof (file as any).text === "function"
+        ? await (file as any).text()
+        : Buffer.from(await (file as any).arrayBuffer()).toString("utf-8")
 
     let rows: Record<string, string>[]
     try {
