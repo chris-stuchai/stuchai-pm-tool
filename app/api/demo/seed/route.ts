@@ -51,20 +51,29 @@ export async function POST(_request: NextRequest) {
       },
     })
 
-    const demoClient = await db.client.upsert({
+    let demoClient = await db.client.findFirst({
       where: { email: "client.demo@stuchai.com" },
-      update: {
-        name: "Demo Holdings",
-        company: "Demo Holdings LLC",
-        createdBy: demoAdmin.id,
-      },
-      create: {
-        email: "client.demo@stuchai.com",
-        name: "Demo Holdings",
-        company: "Demo Holdings LLC",
-        createdBy: demoAdmin.id,
-      },
     })
+
+    if (demoClient) {
+      demoClient = await db.client.update({
+        where: { id: demoClient.id },
+        data: {
+          name: "Demo Holdings",
+          company: "Demo Holdings LLC",
+          createdBy: demoAdmin.id,
+        },
+      })
+    } else {
+      demoClient = await db.client.create({
+        data: {
+          email: "client.demo@stuchai.com",
+          name: "Demo Holdings",
+          company: "Demo Holdings LLC",
+          createdBy: demoAdmin.id,
+        },
+      })
+    }
 
     const existingProject = await db.project.findFirst({
       where: {
