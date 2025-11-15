@@ -55,26 +55,30 @@ export function ClientList({ clients, canEdit }: ClientListProps) {
         {clients.map((client) => (
           <Card key={client.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <CardTitle className="text-lg">{client.name}</CardTitle>
                     <Badge variant={client.active ? "secondary" : "destructive"}>
                       {client.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
-                  <CardDescription className="flex items-center gap-2 mt-1">
+                  <CardDescription className="flex items-center gap-2 mt-1 break-all text-sm">
                     <Mail className="h-3 w-3" />
                     {client.email}
                   </CardDescription>
                 </div>
                 {canEdit && (
-                  <div className="flex flex-col items-end gap-2">
-                    <ClientStatusToggle clientId={client.id} isActive={client.active} />
+                  <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
+                    <ClientStatusToggle
+                      clientId={client.id}
+                      isActive={client.active}
+                      className="w-full md:w-auto"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
-                      className="rounded-full"
+                      className="rounded-full w-full md:w-10 md:h-10"
                       aria-label={`Edit ${client.name}`}
                       onClick={() => setEditingClient(client)}
                     >

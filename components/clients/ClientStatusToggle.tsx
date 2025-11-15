@@ -4,13 +4,15 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Ban, RotateCcw } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ClientStatusToggleProps {
   clientId: string
   isActive: boolean
+  className?: string
 }
 
-export function ClientStatusToggle({ clientId, isActive }: ClientStatusToggleProps) {
+export function ClientStatusToggle({ clientId, isActive, className }: ClientStatusToggleProps) {
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState(isActive)
   const router = useRouter()
@@ -44,6 +46,7 @@ export function ClientStatusToggle({ clientId, isActive }: ClientStatusTogglePro
       variant={active ? "outline" : "secondary"}
       onClick={handleToggle}
       disabled={loading}
+      className={cn("justify-center", className)}
     >
       {active ? (
         <>
