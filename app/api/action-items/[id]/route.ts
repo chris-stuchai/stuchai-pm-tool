@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, ActivityEntityType } from "@prisma/client"
+import { UserRole, ActionItemStatus, ActivityEntityType, SecureFieldType } from "@prisma/client"
 import { logActivity } from "@/lib/activity"
 
 export async function GET(
@@ -45,6 +45,14 @@ export async function GET(
           },
         },
         attachments: true,
+        secureResponse: {
+          select: {
+            id: true,
+            submittedBy: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     })
 
@@ -131,6 +139,9 @@ export async function PATCH(
       clientCanComplete,
       showOnTimeline,
       timelineLabel,
+      requiresSecureResponse,
+      securePrompt,
+      secureFieldType,
     } = body
 
     const updateData: any = {}
@@ -193,6 +204,24 @@ export async function PATCH(
     if (timelineLabel !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
       updateData.timelineLabel = timelineLabel?.trim() || null
     }
+    if (requiresSecureResponse !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      updateData.requiresSecureResponse = !!requiresSecureResponse
+      if (!requiresSecureResponse) {
+        updateData.securePrompt = null
+        updateData.secureFieldType = SecureFieldType.SHORT_TEXT
+        await db.actionSecureResponse.deleteMany({
+          where: { actionItemId: params.id },
+        })
+      }
+    }
+    if (securePrompt !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      updateData.securePrompt = securePrompt?.trim() || null
+    }
+    if (secureFieldType !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      if (typeof secureFieldType === "string" && Object.values(SecureFieldType).includes(secureFieldType as SecureFieldType)) {
+        updateData.secureFieldType = secureFieldType as SecureFieldType
+      }
+    }
 
     const updated = await db.actionItem.update({
       where: { id: params.id },
@@ -225,6 +254,14 @@ export async function PATCH(
           },
         },
         attachments: true,
+        secureResponse: {
+          select: {
+            id: true,
+            submittedBy: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     })
 

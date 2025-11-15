@@ -9,6 +9,7 @@ import {
   Priority,
   UserRole,
   Prisma,
+  SecureFieldType,
 } from "@prisma/client"
 import { logActivity } from "@/lib/activity"
 
@@ -182,6 +183,18 @@ export async function POST(request: NextRequest) {
           ? (priorityRaw as Priority)
           : Priority.MEDIUM
 
+        const requiresSecureResponse = parseBoolean(
+          row["Requires Secure Response (true/false)"]
+        )
+        const securePrompt = row["Secure Prompt"]?.trim() || null
+        const secureFieldTypeRaw =
+          row["Secure Field Type (SHORT_TEXT/LONG_TEXT/SECRET)"]?.toUpperCase()
+        const secureFieldType =
+          secureFieldTypeRaw &&
+          Object.values(SecureFieldType).includes(secureFieldTypeRaw as SecureFieldType)
+            ? (secureFieldTypeRaw as SecureFieldType)
+            : SecureFieldType.SHORT_TEXT
+
         const existingAction = await db.actionItem.findFirst({
           where: {
             projectId: project.id,
@@ -213,6 +226,9 @@ export async function POST(request: NextRequest) {
               row["Add To Timeline (true/false)"]
             ),
             timelineLabel: row["Timeline Note"]?.trim() || null,
+            requiresSecureResponse,
+            securePrompt: requiresSecureResponse ? securePrompt : null,
+            secureFieldType,
           },
         })
 

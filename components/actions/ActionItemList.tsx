@@ -36,6 +36,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
+import { SecureResponseSection } from "./SecureResponseSection"
 
 interface ActionItem {
   id: string
@@ -63,6 +64,15 @@ interface ActionItem {
   clientCompleted?: boolean
   showOnTimeline?: boolean
   timelineLabel?: string | null
+  requiresSecureResponse?: boolean
+  securePrompt?: string | null
+  secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureResponse?: {
+    id: string
+    submittedBy?: string | null
+    createdAt: string | Date
+    updatedAt: string | Date
+  } | null
   attachments?: Array<{
     id: string
     name: string
@@ -76,6 +86,7 @@ interface ActionItemListProps {
   actionItems: ActionItem[]
   canEdit: boolean
   currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
+  currentUserId?: string
 }
 
 const priorityColors = {
@@ -97,6 +108,7 @@ export function ActionItemList({
   actionItems,
   canEdit,
   currentUserRole = "ADMIN",
+  currentUserId,
 }: ActionItemListProps) {
   const router = useRouter()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -273,6 +285,9 @@ export function ActionItemList({
         const StatusIcon = statusIcons[item.status as keyof typeof statusIcons] || Circle
         const isOverdue = item.dueDate && new Date(item.dueDate) < new Date() && item.status !== "COMPLETED"
         const priorityValue = (item.priority || "MEDIUM") as keyof typeof priorityColors
+        const canClientSubmit =
+          currentUserRole === "CLIENT" &&
+          (item.visibleToClient || item.assignee?.id === currentUserId)
         const editablePayload = {
           id: item.id,
           title: item.title,
@@ -287,6 +302,9 @@ export function ActionItemList({
           clientCanComplete: item.clientCanComplete,
           showOnTimeline: item.showOnTimeline,
           timelineLabel: item.timelineLabel,
+          requiresSecureResponse: item.requiresSecureResponse,
+          securePrompt: item.securePrompt,
+          secureFieldType: item.secureFieldType,
         }
 
         return (
@@ -459,6 +477,18 @@ export function ActionItemList({
                   ))}
                 </div>
               )}
+                  {item.requiresSecureResponse && (
+                    <div className="mt-4">
+                      <SecureResponseSection
+                        actionId={item.id}
+                        prompt={item.securePrompt}
+                        fieldType={item.secureFieldType}
+                        secureResponse={item.secureResponse}
+                        currentUserRole={currentUserRole}
+                        canClientSubmit={canClientSubmit}
+                      />
+                    </div>
+                  )}
               {canEdit && (
                 <div className="pt-2">
                   <UploadAttachmentDialog actionItemId={item.id} onUploaded={() => router.refresh()} />

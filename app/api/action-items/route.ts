@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, Priority, ActivityEntityType } from "@prisma/client"
+import { UserRole, ActionItemStatus, Priority, ActivityEntityType, SecureFieldType } from "@prisma/client"
 import { logActivity } from "@/lib/activity"
 
 export async function GET(request: NextRequest) {
@@ -89,6 +89,14 @@ export async function GET(request: NextRequest) {
           },
         },
         attachments: true,
+        secureResponse: {
+          select: {
+            id: true,
+            submittedBy: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -130,6 +138,9 @@ export async function POST(request: NextRequest) {
       clientCanComplete,
       showOnTimeline,
       timelineLabel,
+      requiresSecureResponse,
+      securePrompt,
+      secureFieldType,
     } = body
 
     if (!title) {
@@ -138,6 +149,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const fieldType =
+      typeof secureFieldType === "string" && Object.values(SecureFieldType).includes(secureFieldType as SecureFieldType)
+        ? (secureFieldType as SecureFieldType)
+        : SecureFieldType.SHORT_TEXT
 
     const actionItem = await db.actionItem.create({
       data: {
@@ -152,6 +168,9 @@ export async function POST(request: NextRequest) {
         clientCanComplete: !!clientCanComplete,
         showOnTimeline: !!showOnTimeline,
         timelineLabel: timelineLabel?.trim() || null,
+        requiresSecureResponse: !!requiresSecureResponse,
+        securePrompt: securePrompt?.trim() || null,
+        secureFieldType: fieldType,
         mentions: mentions && mentions.length > 0
           ? {
               create: mentions.map((userId: string) => ({
@@ -198,6 +217,14 @@ export async function POST(request: NextRequest) {
           },
         },
         attachments: true,
+        secureResponse: {
+          select: {
+            id: true,
+            submittedBy: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     })
 

@@ -72,6 +72,14 @@ async function getActionItems(userId: string, userRole: UserRole, email?: string
         },
       },
       attachments: true,
+      secureResponse: {
+        select: {
+          id: true,
+          submittedBy: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",

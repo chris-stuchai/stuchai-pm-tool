@@ -14,16 +14,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useSession } from "next-auth/react"
 import { NotificationCenter } from "@/components/notifications/NotificationCenter"
+import { TeamPresenceBar } from "@/components/presence/TeamPresenceBar"
+import { usePresenceHeartbeat } from "@/components/presence/usePresenceHeartbeat"
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
+  usePresenceHeartbeat(Boolean(session?.user))
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-          <div className="flex-1" />
+          <div className="flex-1">
+            <TeamPresenceBar />
+          </div>
           <div className="flex items-center gap-4">
             <NotificationCenter />
             <DropdownMenu>

@@ -46,6 +46,14 @@ async function getProject(id: string) {
               },
             },
           },
+          secureResponse: {
+            select: {
+              id: true,
+              submittedBy: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",
@@ -203,7 +211,13 @@ export default async function ProjectDetailPage({
         </CardContent>
       </Card>
 
-      <ProjectActionItems projectId={project.id} actionItems={project.actionItems} canEdit={canEdit} />
+      <ProjectActionItems
+        projectId={project.id}
+        actionItems={project.actionItems}
+        canEdit={canEdit}
+        currentUserRole={session.user.role}
+        currentUserId={session.user.id}
+      />
     </div>
   )
 }

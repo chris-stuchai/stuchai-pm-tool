@@ -38,6 +38,9 @@ const editSchema = z.object({
   clientCanComplete: z.boolean().optional().default(false),
   showOnTimeline: z.boolean().optional().default(false),
   timelineLabel: z.string().max(120, "Timeline note must be under 120 characters").optional().nullable(),
+  requiresSecureResponse: z.boolean().optional().default(false),
+  securePrompt: z.string().optional().nullable(),
+  secureFieldType: z.enum(["SHORT_TEXT", "LONG_TEXT", "SECRET"]).optional(),
 })
 
 type EditFormValues = z.infer<typeof editSchema>
@@ -56,6 +59,9 @@ interface EditActionItemDialogProps {
     clientCanComplete?: boolean
     showOnTimeline?: boolean
     timelineLabel?: string | null
+    requiresSecureResponse?: boolean
+    securePrompt?: string | null
+    secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
   }
 }
 
@@ -88,8 +94,15 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
       clientCanComplete: Boolean(action.clientCanComplete),
       showOnTimeline: Boolean(action.showOnTimeline),
       timelineLabel: action.timelineLabel || "",
+      requiresSecureResponse: Boolean(action.requiresSecureResponse),
+      securePrompt: action.securePrompt || "",
+      secureFieldType: action.secureFieldType || "SHORT_TEXT",
     },
   })
+  const visibleToClient = watch("visibleToClient")
+  const showOnTimeline = watch("showOnTimeline")
+  const requiresSecureResponse = watch("requiresSecureResponse")
+  const secureFieldType = watch("secureFieldType") || "SHORT_TEXT"
 
   useEffect(() => {
     if (!open) return
@@ -118,6 +131,9 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
         clientCanComplete: Boolean(values.clientCanComplete),
         showOnTimeline: Boolean(values.showOnTimeline),
         timelineLabel: values.timelineLabel?.trim() || null,
+        requiresSecureResponse: Boolean(values.requiresSecureResponse),
+        securePrompt: values.securePrompt?.trim() || null,
+        secureFieldType: values.secureFieldType || "SHORT_TEXT",
       }
 
       payload.projectId =
@@ -163,6 +179,9 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
         clientCanComplete: Boolean(action.clientCanComplete),
         showOnTimeline: Boolean(action.showOnTimeline),
         timelineLabel: action.timelineLabel || "",
+        requiresSecureResponse: Boolean(action.requiresSecureResponse),
+        securePrompt: action.securePrompt || "",
+        secureFieldType: action.secureFieldType || "SHORT_TEXT",
       })
     }
   }, [open, action, reset])
@@ -267,13 +286,13 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
                 </p>
               </div>
               <Checkbox
-                checked={watch("visibleToClient")}
+                checked={visibleToClient}
                 onCheckedChange={(checked) =>
                   setValue("visibleToClient", Boolean(checked))
                 }
               />
             </div>
-            {watch("visibleToClient") && (
+            {visibleToClient && (
               <div className="flex items-start justify-between gap-4 border-t pt-3">
                 <div>
                   <p className="text-sm font-medium">Allow client completion</p>
@@ -299,13 +318,13 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
                 </p>
               </div>
               <Checkbox
-                checked={watch("showOnTimeline")}
+                checked={showOnTimeline}
                 onCheckedChange={(checked) =>
                   setValue("showOnTimeline", Boolean(checked))
                 }
               />
             </div>
-            {watch("showOnTimeline") && (
+            {showOnTimeline && (
               <div className="space-y-2 border-t pt-3">
                 <Label htmlFor="timeline-note">Timeline note (optional)</Label>
                 <Input
@@ -317,6 +336,53 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
                 <p className="text-xs text-muted-foreground">
                   Defaults to the action title if left blank.
                 </p>
+              </div>
+            )}
+          </div>
+          <div className="rounded-lg border p-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Request secure response</p>
+                <p className="text-xs text-muted-foreground">
+                  Capture passwords, API keys, or other sensitive info through an encrypted field.
+                </p>
+              </div>
+              <Checkbox
+                checked={requiresSecureResponse}
+                onCheckedChange={(checked) =>
+                  setValue("requiresSecureResponse", Boolean(checked))
+                }
+              />
+            </div>
+            {requiresSecureResponse && (
+              <div className="space-y-3 border-t pt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="secure-prompt-edit">Client instructions</Label>
+                  <Textarea
+                    id="secure-prompt-edit"
+                    rows={3}
+                    placeholder="Provide your Squarespace username and password…"
+                    {...register("securePrompt")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expected response type</Label>
+                  <Select
+                    value={secureFieldType}
+                    onValueChange={(value) =>
+                      setValue("secureFieldType", value as "SHORT_TEXT" | "LONG_TEXT" | "SECRET")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SHORT_TEXT">Short text</SelectItem>
+                      <SelectItem value="LONG_TEXT">Paragraph</SelectItem>
+                      <SelectItem value="SECRET">Password / hidden</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           </div>

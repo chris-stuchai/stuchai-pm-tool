@@ -31,15 +31,39 @@ interface ActionItem {
   timelineLabel?: string | null
   visibleToClient?: boolean
   clientCanComplete?: boolean
+  requiresSecureResponse?: boolean
+  securePrompt?: string | null
+  secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureResponse?: {
+    id: string
+    submittedBy?: string | null
+    createdAt: string | Date
+    updatedAt: string | Date
+  } | null
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+    mimeType?: string | null
+    size?: number | null
+  }>
 }
 
 interface ProjectActionItemsProps {
   projectId: string
   actionItems: ActionItem[]
   canEdit: boolean
+  currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
+  currentUserId?: string
 }
 
-export function ProjectActionItems({ projectId, actionItems, canEdit }: ProjectActionItemsProps) {
+export function ProjectActionItems({
+  projectId,
+  actionItems,
+  canEdit,
+  currentUserRole = "ADMIN",
+  currentUserId,
+}: ProjectActionItemsProps) {
   return (
     <Card>
       <CardHeader>
@@ -51,7 +75,12 @@ export function ProjectActionItems({ projectId, actionItems, canEdit }: ProjectA
         </div>
       </CardHeader>
       <CardContent>
-        <ActionItemList actionItems={actionItems} canEdit={canEdit} />
+        <ActionItemList
+          actionItems={actionItems}
+          canEdit={canEdit}
+          currentUserRole={currentUserRole}
+          currentUserId={currentUserId}
+        />
       </CardContent>
     </Card>
   )

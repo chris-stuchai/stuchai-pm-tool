@@ -39,6 +39,9 @@ const actionItemSchema = z.object({
   clientCanComplete: z.boolean().optional().default(false),
   showOnTimeline: z.boolean().optional().default(false),
   timelineLabel: z.string().max(120, "Timeline note must be under 120 characters").optional().nullable(),
+  requiresSecureResponse: z.boolean().optional().default(false),
+  securePrompt: z.string().max(500, "Prompt must be shorter than 500 characters.").optional().nullable(),
+  secureFieldType: z.enum(["SHORT_TEXT", "LONG_TEXT", "SECRET"]).optional(),
 })
 
 type ActionItemFormData = z.infer<typeof actionItemSchema>
@@ -71,8 +74,15 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       clientCanComplete: false,
       showOnTimeline: false,
       timelineLabel: "",
+      requiresSecureResponse: false,
+      securePrompt: "",
+      secureFieldType: "SHORT_TEXT",
     },
   })
+  const visibleToClient = watch("visibleToClient")
+  const showOnTimeline = watch("showOnTimeline")
+  const requiresSecureResponse = watch("requiresSecureResponse")
+  const secureFieldType = watch("secureFieldType") || "SHORT_TEXT"
 
   useEffect(() => {
     if (open) {
@@ -115,6 +125,9 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         clientCanComplete: false,
         showOnTimeline: false,
         timelineLabel: "",
+        requiresSecureResponse: false,
+        securePrompt: "",
+        secureFieldType: "SHORT_TEXT",
       })
     }
   }, [open, reset, projectId])
@@ -156,6 +169,14 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       cleanedData.clientCanComplete = Boolean(data.clientCanComplete)
       cleanedData.showOnTimeline = Boolean(data.showOnTimeline)
       cleanedData.timelineLabel = data.timelineLabel?.trim() || null
+      cleanedData.requiresSecureResponse = Boolean(data.requiresSecureResponse)
+      if (cleanedData.requiresSecureResponse) {
+        cleanedData.securePrompt = data.securePrompt?.trim() || null
+        cleanedData.secureFieldType = data.secureFieldType || "SHORT_TEXT"
+      } else {
+        cleanedData.securePrompt = null
+        cleanedData.secureFieldType = "SHORT_TEXT"
+      }
 
       console.log("Submitting action item:", cleanedData)
 
@@ -183,6 +204,11 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         priority: "MEDIUM",
         visibleToClient: false,
         clientCanComplete: false,
+        showOnTimeline: false,
+        timelineLabel: "",
+        requiresSecureResponse: false,
+        securePrompt: "",
+        secureFieldType: "SHORT_TEXT",
       })
       router.refresh()
     } catch (error) {
@@ -313,13 +339,13 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                   </p>
                 </div>
                 <Checkbox
-                  checked={watch("visibleToClient")}
+                  checked={visibleToClient}
                   onCheckedChange={(checked) =>
                     setValue("visibleToClient", Boolean(checked), { shouldValidate: true })
                   }
                 />
               </div>
-              {watch("visibleToClient") && (
+              {visibleToClient && (
                 <div className="flex items-start justify-between gap-4 border-t pt-3">
                   <div>
                     <p className="text-sm font-medium">Allow client completion</p>
@@ -345,13 +371,13 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                   </p>
                 </div>
                 <Checkbox
-                  checked={watch("showOnTimeline")}
+                  checked={showOnTimeline}
                   onCheckedChange={(checked) =>
                     setValue("showOnTimeline", Boolean(checked), { shouldValidate: true })
                   }
                 />
               </div>
-              {watch("showOnTimeline") && (
+              {showOnTimeline && (
                 <div className="space-y-2 border-t pt-3">
                   <Label htmlFor="timeline-label">Timeline note (optional)</Label>
                   <Input
@@ -363,6 +389,59 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                   <p className="text-xs text-muted-foreground">
                     Defaults to the action title if left blank.
                   </p>
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Request secure response</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ask the client to provide passwords, API keys, or other sensitive info via an
+                    encrypted field.
+                  </p>
+                </div>
+                <Checkbox
+                  checked={requiresSecureResponse}
+                  onCheckedChange={(checked) =>
+                    setValue("requiresSecureResponse", Boolean(checked), { shouldValidate: true })
+                  }
+                />
+              </div>
+              {requiresSecureResponse && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="secure-prompt">Client instructions</Label>
+                    <Textarea
+                      id="secure-prompt"
+                      rows={3}
+                      placeholder="Provide your Squarespace username and password…"
+                      {...register("securePrompt")}
+                    />
+                    {errors.securePrompt && (
+                      <p className="text-xs text-destructive">{errors.securePrompt.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Expected response type</Label>
+                    <Select
+                      value={secureFieldType}
+                      onValueChange={(value) =>
+                        setValue("secureFieldType", value as "SHORT_TEXT" | "LONG_TEXT" | "SECRET", {
+                          shouldValidate: true,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SHORT_TEXT">Short text</SelectItem>
+                        <SelectItem value="LONG_TEXT">Paragraph</SelectItem>
+                        <SelectItem value="SECRET">Password / hidden</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
             </div>

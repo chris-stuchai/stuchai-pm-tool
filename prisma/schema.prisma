@@ -79,6 +79,12 @@ enum FormAssignmentStatus {
   REVIEWED
 }
 
+enum SecureFieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  SECRET
+}
+
 enum ActivityEntityType {
   PROJECT
   CLIENT
@@ -104,6 +110,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   active        Boolean   @default(true)
   notifyOnClientMessage Boolean @default(true)
+  lastSeenAt    DateTime?
 
   // Relations
   accounts            Account[]
@@ -129,6 +136,7 @@ model User {
   assignedForms FormAssignment[]           @relation("FormAssignmentCreator")
   formSubmissions FormSubmission[]         @relation("FormSubmissionUser")
   passwordResetTokens PasswordResetToken[]
+  secureResponses ActionSecureResponse[]   @relation("SecureResponseSubmitter")
 
   @@map("users")
 }
@@ -261,6 +269,9 @@ model ActionItem {
   clientNotes String? @db.Text
   showOnTimeline Boolean @default(false)
   timelineLabel String?
+  requiresSecureResponse Boolean @default(false)
+  securePrompt String? @db.Text
+  secureFieldType SecureFieldType? @default(SHORT_TEXT)
 
   // Relations
   project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -269,6 +280,7 @@ model ActionItem {
   notifications Notification[]
   mentions   Mention[]
   attachments ActionItemAttachment[]
+  secureResponse ActionSecureResponse?
 
   @@map("action_items")
 }
@@ -591,5 +603,19 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model ActionSecureResponse {
+  id            String   @id @default(cuid())
+  actionItemId  String   @unique
+  submittedBy   String?
+  encryptedData String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  actionItem ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  submitter  User?      @relation("SecureResponseSubmitter", fields: [submittedBy], references: [id], onDelete: Cascade)
+
+  @@map("action_secure_responses")
 }
 

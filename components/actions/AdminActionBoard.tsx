@@ -37,6 +37,15 @@ interface ActionItem {
   clientCompleted?: boolean
   showOnTimeline?: boolean
   timelineLabel?: string | null
+  requiresSecureResponse?: boolean
+  securePrompt?: string | null
+  secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureResponse?: {
+    id: string
+    submittedBy?: string | null
+    createdAt: string | Date
+    updatedAt: string | Date
+  } | null
   attachments?: Array<{
     id: string
     name: string
