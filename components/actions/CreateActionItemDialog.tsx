@@ -42,6 +42,8 @@ const actionItemSchema = z.object({
   requiresSecureResponse: z.boolean().optional().default(false),
   securePrompt: z.string().max(500, "Prompt must be shorter than 500 characters.").optional().nullable(),
   secureFieldType: z.enum(["SHORT_TEXT", "LONG_TEXT", "SECRET"]).optional(),
+  secureRetentionPolicy: z.enum(["UNTIL_DELETED", "EXPIRE_AFTER_VIEW", "EXPIRE_AFTER_HOURS"]).optional(),
+  secureExpireAfterHours: z.number().optional(),
 })
 
 type ActionItemFormData = z.infer<typeof actionItemSchema>
@@ -77,12 +79,16 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       requiresSecureResponse: false,
       securePrompt: "",
       secureFieldType: "SHORT_TEXT",
+      secureRetentionPolicy: "UNTIL_DELETED",
+      secureExpireAfterHours: 72,
     },
   })
   const visibleToClient = watch("visibleToClient")
   const showOnTimeline = watch("showOnTimeline")
   const requiresSecureResponse = watch("requiresSecureResponse")
   const secureFieldType = watch("secureFieldType") || "SHORT_TEXT"
+  const secureRetentionPolicy = watch("secureRetentionPolicy") || "UNTIL_DELETED"
+  const secureExpireAfterHours = watch("secureExpireAfterHours") ?? 72
 
   useEffect(() => {
     if (open) {
@@ -128,6 +134,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         requiresSecureResponse: false,
         securePrompt: "",
         secureFieldType: "SHORT_TEXT",
+        secureRetentionPolicy: "UNTIL_DELETED",
+        secureExpireAfterHours: 72,
       })
     }
   }, [open, reset, projectId])
@@ -173,9 +181,16 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
       if (cleanedData.requiresSecureResponse) {
         cleanedData.securePrompt = data.securePrompt?.trim() || null
         cleanedData.secureFieldType = data.secureFieldType || "SHORT_TEXT"
+        cleanedData.secureRetentionPolicy = data.secureRetentionPolicy || "UNTIL_DELETED"
+        cleanedData.secureExpireAfterHours =
+          cleanedData.secureRetentionPolicy === "EXPIRE_AFTER_HOURS"
+            ? Number(data.secureExpireAfterHours) || 72
+            : null
       } else {
         cleanedData.securePrompt = null
         cleanedData.secureFieldType = "SHORT_TEXT"
+        cleanedData.secureRetentionPolicy = "UNTIL_DELETED"
+        cleanedData.secureExpireAfterHours = null
       }
 
       console.log("Submitting action item:", cleanedData)
@@ -209,6 +224,8 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
         requiresSecureResponse: false,
         securePrompt: "",
         secureFieldType: "SHORT_TEXT",
+        secureRetentionPolicy: "UNTIL_DELETED",
+        secureExpireAfterHours: 72,
       })
       router.refresh()
     } catch (error) {
@@ -442,6 +459,36 @@ export function CreateActionItemDialog({ projectId }: CreateActionItemDialogProp
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Retention policy</Label>
+                    <Select
+                      value={secureRetentionPolicy}
+                      onValueChange={(value) =>
+                        setValue("secureRetentionPolicy", value as "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS")
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UNTIL_DELETED">Keep until manually removed</SelectItem>
+                        <SelectItem value="EXPIRE_AFTER_VIEW">Self-destruct after first admin view</SelectItem>
+                        <SelectItem value="EXPIRE_AFTER_HOURS">Auto-delete after X hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {secureRetentionPolicy === "EXPIRE_AFTER_HOURS" && (
+                    <div className="space-y-1">
+                      <Label htmlFor="secure-expire-hours">Delete after (hours)</Label>
+                      <Input
+                        id="secure-expire-hours"
+                        type="number"
+                        min={1}
+                        max={168}
+                        {...register("secureExpireAfterHours", { valueAsNumber: true })}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

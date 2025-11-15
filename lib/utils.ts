@@ -25,3 +25,11 @@ export function formatDateTime(date: Date | string): string {
   }).format(d)
 }
 
+export function formatCurrency(amount: number = 0, currency: string = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(amount) ? amount : 0)
+}
+

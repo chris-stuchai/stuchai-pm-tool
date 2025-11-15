@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { SecureRetentionPolicy, UserRole } from "@prisma/client"
 import { encryptSecret, decryptSecret } from "@/lib/crypto"
 import { logActivity } from "@/lib/activity"
 
@@ -34,6 +34,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         actionItem: {
           select: {
             securePrompt: true,
+            secureRetentionPolicy: true,
+            secureExpireAfterHours: true,
+            secureViewedAt: true,
           },
         },
       },
@@ -43,7 +46,42 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No secure response" }, { status: 404 })
     }
 
+    const now = Date.now()
+    const expiresAt =
+      response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_HOURS &&
+      response.actionItem.secureExpireAfterHours
+        ? new Date(response.createdAt).getTime() + response.actionItem.secureExpireAfterHours * 60 * 60 * 1000
+        : null
+
+    if (response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_VIEW && response.actionItem.secureViewedAt) {
+      return NextResponse.json({ error: "Secure response already viewed and purged." }, { status: 404 })
+    }
+
+    if (expiresAt && now > expiresAt) {
+      await db.actionSecureResponse.delete({
+        where: { actionItemId: params.id },
+      })
+      return NextResponse.json({ error: "Secure response expired." }, { status: 404 })
+    }
+
     const value = decryptSecret(response.encryptedData)
+
+    if (response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_VIEW) {
+      await db.$transaction([
+        db.actionSecureResponse.delete({
+          where: { actionItemId: params.id },
+        }),
+        db.actionItem.update({
+          where: { id: params.id },
+          data: { secureViewedAt: new Date() },
+        }),
+      ])
+    } else {
+      await db.actionItem.update({
+        where: { id: params.id },
+        data: { secureViewedAt: new Date() },
+      })
+    }
 
     return NextResponse.json({
       prompt: response.actionItem.securePrompt,
@@ -108,18 +146,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const encryptedData = encryptSecret(value)
 
-    await db.actionSecureResponse.upsert({
-      where: { actionItemId: params.id },
-      create: {
-        actionItemId: params.id,
-        encryptedData,
-        submittedBy: session.user.id,
-      },
-      update: {
-        encryptedData,
-        submittedBy: session.user.id,
-      },
-    })
+    await db.$transaction([
+      db.actionSecureResponse.upsert({
+        where: { actionItemId: params.id },
+        create: {
+          actionItemId: params.id,
+          encryptedData,
+          submittedBy: session.user.id,
+        },
+        update: {
+          encryptedData,
+          submittedBy: session.user.id,
+        },
+      }),
+      db.actionItem.update({
+        where: { id: params.id },
+        data: { secureViewedAt: null },
+      }),
+    ])
 
     await logActivity({
       entityType: "ACTION_ITEM",

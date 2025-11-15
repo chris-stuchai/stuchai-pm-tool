@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, ActivityEntityType, SecureFieldType } from "@prisma/client"
+import {
+  UserRole,
+  ActionItemStatus,
+  ActivityEntityType,
+  SecureFieldType,
+  SecureRetentionPolicy,
+} from "@prisma/client"
 import { logActivity } from "@/lib/activity"
 
 export async function GET(
@@ -142,6 +148,8 @@ export async function PATCH(
       requiresSecureResponse,
       securePrompt,
       secureFieldType,
+      secureRetentionPolicy,
+      secureExpireAfterHours,
     } = body
 
     const updateData: any = {}
@@ -209,6 +217,8 @@ export async function PATCH(
       if (!requiresSecureResponse) {
         updateData.securePrompt = null
         updateData.secureFieldType = SecureFieldType.SHORT_TEXT
+        updateData.secureRetentionPolicy = SecureRetentionPolicy.UNTIL_DELETED
+        updateData.secureExpireAfterHours = null
         await db.actionSecureResponse.deleteMany({
           where: { actionItemId: params.id },
         })
@@ -220,6 +230,23 @@ export async function PATCH(
     if (secureFieldType !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
       if (typeof secureFieldType === "string" && Object.values(SecureFieldType).includes(secureFieldType as SecureFieldType)) {
         updateData.secureFieldType = secureFieldType as SecureFieldType
+      }
+    }
+    if (secureRetentionPolicy !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      if (
+        typeof secureRetentionPolicy === "string" &&
+        Object.values(SecureRetentionPolicy).includes(secureRetentionPolicy as SecureRetentionPolicy)
+      ) {
+        updateData.secureRetentionPolicy = secureRetentionPolicy as SecureRetentionPolicy
+        if (secureRetentionPolicy !== SecureRetentionPolicy.EXPIRE_AFTER_HOURS) {
+          updateData.secureExpireAfterHours = null
+        }
+      }
+    }
+    if (secureExpireAfterHours !== undefined && (session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER)) {
+      const hours = Number(secureExpireAfterHours)
+      if (!Number.isNaN(hours)) {
+        updateData.secureExpireAfterHours = hours
       }
     }
 

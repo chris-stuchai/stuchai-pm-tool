@@ -80,6 +80,27 @@ async function getActionItems(userId: string, userRole: UserRole, email?: string
           updatedAt: true,
         },
       },
+      reviewAssignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      statusHistory: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
@@ -95,6 +116,25 @@ export default async function ActionItemsPage() {
 
   const actionItems = await getActionItems(session.user.id, session.user.role, session.user.email)
   const canCreate = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
+  const teammates =
+    session.user.role === UserRole.CLIENT
+      ? []
+      : await db.user.findMany({
+          where: {
+            active: true,
+            role: {
+              in: [UserRole.ADMIN, UserRole.MANAGER],
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+          orderBy: {
+            name: "asc",
+          },
+        })
 
   return (
     <div className="space-y-6">
@@ -118,6 +158,7 @@ export default async function ActionItemsPage() {
         canEdit={canCreate}
         currentUserRole={session.user.role}
         currentUserId={session.user.id}
+        teammates={teammates}
       />
     </div>
   )

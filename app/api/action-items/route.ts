@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { UserRole, ActionItemStatus, Priority, ActivityEntityType, SecureFieldType } from "@prisma/client"
+import {
+  UserRole,
+  ActionItemStatus,
+  Priority,
+  ActivityEntityType,
+  SecureFieldType,
+  SecureRetentionPolicy,
+} from "@prisma/client"
 import { logActivity } from "@/lib/activity"
 
 export async function GET(request: NextRequest) {
@@ -155,6 +162,18 @@ export async function POST(request: NextRequest) {
         ? (secureFieldType as SecureFieldType)
         : SecureFieldType.SHORT_TEXT
 
+    const retentionPolicy =
+      requiresSecureResponse &&
+      typeof body.secureRetentionPolicy === "string" &&
+      Object.values(SecureRetentionPolicy).includes(body.secureRetentionPolicy as SecureRetentionPolicy)
+        ? (body.secureRetentionPolicy as SecureRetentionPolicy)
+        : SecureRetentionPolicy.UNTIL_DELETED
+
+    const expireAfterHours =
+      retentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_HOURS
+        ? Number(body.secureExpireAfterHours) || 72
+        : null
+
     const actionItem = await db.actionItem.create({
       data: {
         title,
@@ -171,6 +190,8 @@ export async function POST(request: NextRequest) {
         requiresSecureResponse: !!requiresSecureResponse,
         securePrompt: securePrompt?.trim() || null,
         secureFieldType: fieldType,
+        secureRetentionPolicy: retentionPolicy,
+        secureExpireAfterHours: expireAfterHours,
         mentions: mentions && mentions.length > 0
           ? {
               create: mentions.map((userId: string) => ({

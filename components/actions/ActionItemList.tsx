@@ -4,14 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil, Trash2, CalendarDays } from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { CheckCircle2, Circle, Clock, AlertCircle, Mail, Paperclip, Pencil, Trash2, CalendarDays, ChevronDown, ChevronUp } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -37,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { SecureResponseSection } from "./SecureResponseSection"
+import { StatusUpdateDialog } from "./StatusUpdateDialog"
+import { ActionHistoryList } from "./ActionHistoryList"
 
 interface ActionItem {
   id: string
@@ -67,12 +62,36 @@ interface ActionItem {
   requiresSecureResponse?: boolean
   securePrompt?: string | null
   secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureRetentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  secureExpireAfterHours?: number | null
+  secureViewedAt?: string | Date | null
   secureResponse?: {
     id: string
     submittedBy?: string | null
     createdAt: string | Date
     updatedAt: string | Date
   } | null
+  reviewRequired?: boolean
+  reviewAssignee?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  statusHistory?: Array<{
+    id: string
+    previousStatus?: string | null
+    newStatus: string
+    summary?: string | null
+    outcomeTag?: string | null
+    notifiedUserIds: string[]
+    followUpActionId?: string | null
+    createdAt: string | Date
+    author: {
+      id: string
+      name: string | null
+      email: string
+    }
+  }>
   attachments?: Array<{
     id: string
     name: string
@@ -87,6 +106,7 @@ interface ActionItemListProps {
   canEdit: boolean
   currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
   currentUserId?: string
+  teammates?: { id: string; name: string | null; email: string }[]
 }
 
 const priorityColors = {
@@ -109,9 +129,9 @@ export function ActionItemList({
   canEdit,
   currentUserRole = "ADMIN",
   currentUserId,
+  teammates = [],
 }: ActionItemListProps) {
   const router = useRouter()
-  const [updating, setUpdating] = useState<string | null>(null)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
   const [clientUpdating, setClientUpdating] = useState<string | null>(null)
   const [attachmentModal, setAttachmentModal] = useState<{ id: string; title: string } | null>(null)
@@ -125,28 +145,8 @@ export function ActionItemList({
   const [clientFile, setClientFile] = useState<File | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const handleStatusChange = async (itemId: string, newStatus: string) => {
-    setUpdating(itemId)
-    try {
-      const response = await fetch(`/api/action-items/${itemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update status")
-      }
-
-      router.refresh()
-    } catch (error) {
-      console.error("Error updating status:", error)
-      alert("Failed to update status. Please try again.")
-    } finally {
-      setUpdating(null)
-    }
-  }
+  const [statusDialogItem, setStatusDialogItem] = useState<ActionItem | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
   const handleSendReminder = async (itemId: string) => {
     setSendingReminder(itemId)
@@ -354,6 +354,12 @@ export function ActionItemList({
                         {item.timelineLabel ? ` • ${item.timelineLabel}` : ""}
                       </div>
                     )}
+                    {item.reviewRequired && (
+                      <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                        Review pending
+                        {item.reviewAssignee ? ` • ${item.reviewAssignee.name || item.reviewAssignee.email}` : ""}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -373,21 +379,13 @@ export function ActionItemList({
                           <Mail className="h-4 w-4" />
                         </Button>
                       )}
-                      <Select
-                        value={item.status}
-                        onValueChange={(value) => handleStatusChange(item.id, value)}
-                        disabled={updating === item.id}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setStatusDialogItem(item)}
                       >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PENDING">Pending</SelectItem>
-                          <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                          <SelectItem value="COMPLETED">Completed</SelectItem>
-                          <SelectItem value="OVERDUE">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        Update Status
+                      </Button>
                       <EditActionItemDialog
                         action={editablePayload}
                         trigger={
@@ -455,43 +453,67 @@ export function ActionItemList({
                   </span>
                 </div>
               )}
-              {item.attachments && item.attachments.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {item.attachments.map((attachment) => (
-                    <div key={attachment.id} className="flex items-center justify-between text-xs">
-                      <a
-                        href={attachment.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-primary hover:underline"
-                      >
-                        <Paperclip className="mr-1 h-3 w-3" />
-                        {attachment.name}
-                      </a>
-                      {attachment.size && (
-                        <span className="text-muted-foreground">
-                          {(attachment.size / 1024).toFixed(1)} KB
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-                  {item.requiresSecureResponse && (
-                    <div className="mt-4">
-                      <SecureResponseSection
-                        actionId={item.id}
-                        prompt={item.securePrompt}
-                        fieldType={item.secureFieldType}
-                        secureResponse={item.secureResponse}
-                        currentUserRole={currentUserRole}
-                        canClientSubmit={canClientSubmit}
-                      />
+              <div className="pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() =>
+                    setExpandedRows((prev) => ({
+                      ...prev,
+                      [item.id]: !prev[item.id],
+                    }))
+                  }
+                >
+                  {expandedRows[item.id] ? (
+                    <ChevronUp className="mr-1 h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="mr-1 h-4 w-4" />
+                  )}
+                  {expandedRows[item.id] ? "Hide details" : "View details"}
+                </Button>
+              </div>
+              {expandedRows[item.id] && (
+                <div className="mt-3 space-y-4">
+                  {item.attachments && item.attachments.length > 0 && (
+                    <div className="space-y-1">
+                      {item.attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center justify-between text-xs">
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center text-primary hover:underline"
+                          >
+                            <Paperclip className="mr-1 h-3 w-3" />
+                            {attachment.name}
+                          </a>
+                          {attachment.size && (
+                            <span className="text-muted-foreground">
+                              {(attachment.size / 1024).toFixed(1)} KB
+                            </span>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
-              {canEdit && (
-                <div className="pt-2">
-                  <UploadAttachmentDialog actionItemId={item.id} onUploaded={() => router.refresh()} />
+                  {item.requiresSecureResponse && (
+                    <SecureResponseSection
+                      actionId={item.id}
+                      prompt={item.securePrompt}
+                      fieldType={item.secureFieldType}
+                      secureResponse={item.secureResponse}
+                      currentUserRole={currentUserRole}
+                      canClientSubmit={canClientSubmit}
+                      retentionPolicy={item.secureRetentionPolicy}
+                      expireAfterHours={item.secureExpireAfterHours}
+                      viewedAt={item.secureViewedAt}
+                    />
+                  )}
+                  <ActionHistoryList history={item.statusHistory || []} />
+                  {canEdit && (
+                    <UploadAttachmentDialog actionItemId={item.id} onUploaded={() => router.refresh()} />
+                  )}
                 </div>
               )}
               {currentUserRole === "CLIENT" && item.visibleToClient && (
@@ -583,6 +605,18 @@ export function ActionItemList({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {statusDialogItem && (
+        <StatusUpdateDialog
+          action={statusDialogItem}
+          teammates={teammates}
+          currentUserRole={currentUserRole}
+          onClose={() => setStatusDialogItem(null)}
+          onUpdated={() => {
+            setStatusDialogItem(null)
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

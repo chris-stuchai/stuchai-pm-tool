@@ -40,12 +40,36 @@ interface ActionItem {
   requiresSecureResponse?: boolean
   securePrompt?: string | null
   secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureRetentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  secureExpireAfterHours?: number | null
+  secureViewedAt?: string | Date | null
   secureResponse?: {
     id: string
     submittedBy?: string | null
     createdAt: string | Date
     updatedAt: string | Date
   } | null
+  reviewRequired?: boolean
+  reviewAssignee?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  statusHistory?: Array<{
+    id: string
+    previousStatus?: string | null
+    newStatus: string
+    summary?: string | null
+    outcomeTag?: string | null
+    notifiedUserIds: string[]
+    followUpActionId?: string | null
+    createdAt: string | Date
+    author: {
+      id: string
+      name: string | null
+      email: string
+    }
+  }>
   attachments?: Array<{
     id: string
     name: string
@@ -61,6 +85,7 @@ interface AdminActionBoardProps {
   items: ActionItem[]
   canEdit: boolean
   currentUserRole: Role
+  teammates: { id: string; name: string | null; email: string }[]
 }
 
 interface ActionGroup {
@@ -78,6 +103,7 @@ export function AdminActionBoard({
   items,
   canEdit,
   currentUserRole,
+  teammates,
 }: AdminActionBoardProps) {
   const groups = useMemo<ActionGroup[]>(() => {
     const now = Date.now()
@@ -155,6 +181,7 @@ export function AdminActionBoard({
               actionItems={group.items}
               canEdit={canEdit}
               currentUserRole={currentUserRole}
+              teammates={teammates}
             />
           </CardContent>
         </Card>

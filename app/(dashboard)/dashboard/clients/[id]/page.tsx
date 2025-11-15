@@ -19,6 +19,7 @@ import { calculateProjectProgress } from "@/lib/projects"
 import { DeliverablesCard } from "@/components/deliverables/DeliverablesCard"
 import { FormAssignmentList } from "@/components/forms/FormAssignmentList"
 import { SerializedFormAssignment, SerializedFormField } from "@/types/forms"
+import { ClientBillingCard } from "@/components/billing/ClientBillingCard"
 
 /** Converts Prisma form fields into serializable payloads for client components. */
 const serializeFields = (fields: any[]): SerializedFormField[] =>
@@ -63,6 +64,27 @@ const serializeAssignments = (assignments: any[]): SerializedFormAssignment[] =>
             email: submission.submitter.email,
           }
         : null,
+    })),
+  }))
+
+const serializeContracts = (contracts: any[]) =>
+  contracts.map((contract: any) => ({
+    id: contract.id,
+    name: contract.name,
+    amount: contract.amount.toString(),
+    currency: contract.currency,
+    startDate: contract.startDate.toISOString(),
+    endDate: contract.endDate ? contract.endDate.toISOString() : null,
+    recurrence: contract.recurrence,
+    paymentMethod: contract.paymentMethod,
+    notes: contract.notes,
+    invoices: contract.invoices.map((invoice: any) => ({
+      id: invoice.id,
+      amount: invoice.amount.toString(),
+      currency: invoice.currency,
+      dueDate: invoice.dueDate.toISOString(),
+      status: invoice.status,
+      externalUrl: invoice.externalUrl,
     })),
   }))
 
@@ -142,6 +164,16 @@ async function getClient(id: string) {
         },
         orderBy: { createdAt: "desc" },
       },
+      contracts: {
+        include: {
+          invoices: {
+            orderBy: { dueDate: "desc" },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
   })
 
@@ -164,6 +196,7 @@ export default async function ClientDetailPage({
 
   const canEdit = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
   const serializedAssignments = serializeAssignments(client.formAssignments ?? [])
+  const billingContracts = serializeContracts(client.contracts ?? [])
 
   return (
     <div className="space-y-6">
@@ -284,44 +317,45 @@ export default async function ClientDetailPage({
         </Card>
       </div>
 
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
-        <ClientDocuments clientId={client.id} canEdit={canEdit} />
-        <DeliverablesCard
-          clientId={client.id}
-          canEdit={canEdit}
-          initialItems={client.deliverables}
-        />
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">Requests &amp; Forms</h2>
-              <p className="text-sm text-muted-foreground">
-                Track onboarding questionnaires and client checklists.
-              </p>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <ClientDocuments clientId={client.id} canEdit={canEdit} />
+          <DeliverablesCard
+            clientId={client.id}
+            canEdit={canEdit}
+            initialItems={client.deliverables}
+          />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Requests &amp; Forms</h2>
+                <p className="text-sm text-muted-foreground">
+                  Track onboarding questionnaires and client checklists.
+                </p>
+              </div>
+              {canEdit && (
+                <Button variant="link" className="px-0" asChild>
+                  <Link href="/dashboard/forms">Manage</Link>
+                </Button>
+              )}
             </div>
-            {canEdit && (
-              <Button variant="link" className="px-0" asChild>
-                <Link href="/dashboard/forms">Manage</Link>
-              </Button>
-            )}
+            <FormAssignmentList
+              assignments={serializedAssignments}
+              variant="compact"
+              allowStatusUpdates={false}
+            />
           </div>
-          <FormAssignmentList
-            assignments={serializedAssignments}
-            variant="compact"
-            allowStatusUpdates={false}
+        </div>
+        <div className="lg:col-span-1 space-y-6">
+          <ClientBillingCard clientId={client.id} contracts={billingContracts} canEdit={canEdit} />
+          <ClientMessages
+            clientId={client.id}
+            currentUserId={session.user.id}
+            disabled={!client.active}
+            isClientActive={client.active}
           />
         </div>
       </div>
-      <div className="lg:col-span-1">
-        <ClientMessages
-          clientId={client.id}
-          currentUserId={session.user.id}
-          disabled={!client.active}
-          isClientActive={client.active}
-        />
-      </div>
-    </div>
     </div>
   )
 }

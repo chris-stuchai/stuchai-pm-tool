@@ -43,6 +43,8 @@ enum NotificationType {
   ACTION_ITEM_DUE_SOON
   ACTION_ITEM_OVERDUE
   ACTION_ITEM_COMPLETED
+  ACTION_ITEM_STATUS
+  ACTION_ITEM_FOLLOW_UP
   PROJECT_UPDATED
   CLIENT_ADDED
   REMINDER
@@ -77,6 +79,19 @@ enum FormAssignmentStatus {
   PENDING
   SUBMITTED
   REVIEWED
+}
+
+enum SecureRetentionPolicy {
+  UNTIL_DELETED
+  EXPIRE_AFTER_VIEW
+  EXPIRE_AFTER_HOURS
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  VOID
 }
 
 enum SecureFieldType {
@@ -137,6 +152,8 @@ model User {
   formSubmissions FormSubmission[]         @relation("FormSubmissionUser")
   passwordResetTokens PasswordResetToken[]
   secureResponses ActionSecureResponse[]   @relation("SecureResponseSubmitter")
+  reviewAssignments ActionItem[]           @relation("ActionReviewAssignee")
+  statusUpdates ActionStatusHistory[]      @relation("StatusHistoryAuthor")
 
   @@map("users")
 }
@@ -201,6 +218,7 @@ model Client {
   formAssignments FormAssignment[]
   active    Boolean   @default(true)
   invitation ClientInvitation?
+  contracts Contract[]
 
   @@map("clients")
 }
@@ -272,6 +290,11 @@ model ActionItem {
   requiresSecureResponse Boolean @default(false)
   securePrompt String? @db.Text
   secureFieldType SecureFieldType? @default(SHORT_TEXT)
+  secureRetentionPolicy SecureRetentionPolicy @default(UNTIL_DELETED)
+  secureExpireAfterHours Int?
+  secureViewedAt DateTime?
+  reviewRequired Boolean @default(false)
+  reviewAssigneeId String?
 
   // Relations
   project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -281,6 +304,8 @@ model ActionItem {
   mentions   Mention[]
   attachments ActionItemAttachment[]
   secureResponse ActionSecureResponse?
+  reviewAssignee User? @relation("ActionReviewAssignee", fields: [reviewAssigneeId], references: [id])
+  statusHistory ActionStatusHistory[]
 
   @@map("action_items")
 }
@@ -617,5 +642,60 @@ model ActionSecureResponse {
   submitter  User?      @relation("SecureResponseSubmitter", fields: [submittedBy], references: [id], onDelete: Cascade)
 
   @@map("action_secure_responses")
+}
+
+model ActionStatusHistory {
+  id            String           @id @default(cuid())
+  actionItemId  String
+  previousStatus ActionItemStatus?
+  newStatus     ActionItemStatus
+  summary       String?
+  outcomeTag    String?
+  notifiedUserIds String[]
+  followUpActionId String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  actionItem ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  author     User       @relation("StatusHistoryAuthor", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("action_status_history")
+}
+
+model Contract {
+  id          String    @id @default(cuid())
+  clientId    String
+  name        String
+  amount      Decimal   @db.Decimal(12,2)
+  currency    String    @default("USD")
+  startDate   DateTime
+  endDate     DateTime?
+  recurrence  String?
+  paymentMethod String? // e.g., "Chase"
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  invoices    Invoice[]
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("contracts")
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  contractId  String
+  amount      Decimal       @db.Decimal(12,2)
+  currency    String        @default("USD")
+  dueDate     DateTime
+  status      InvoiceStatus @default(PENDING)
+  externalUrl String?
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
 }
 

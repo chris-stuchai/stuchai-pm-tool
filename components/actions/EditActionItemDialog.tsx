@@ -41,6 +41,8 @@ const editSchema = z.object({
   requiresSecureResponse: z.boolean().optional().default(false),
   securePrompt: z.string().optional().nullable(),
   secureFieldType: z.enum(["SHORT_TEXT", "LONG_TEXT", "SECRET"]).optional(),
+  secureRetentionPolicy: z.enum(["UNTIL_DELETED", "EXPIRE_AFTER_VIEW", "EXPIRE_AFTER_HOURS"]).optional(),
+  secureExpireAfterHours: z.number().optional(),
 })
 
 type EditFormValues = z.infer<typeof editSchema>
@@ -62,6 +64,8 @@ interface EditActionItemDialogProps {
     requiresSecureResponse?: boolean
     securePrompt?: string | null
     secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+    secureRetentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+    secureExpireAfterHours?: number | null
   }
 }
 
@@ -97,12 +101,16 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
       requiresSecureResponse: Boolean(action.requiresSecureResponse),
       securePrompt: action.securePrompt || "",
       secureFieldType: action.secureFieldType || "SHORT_TEXT",
+      secureRetentionPolicy: action.secureRetentionPolicy || "UNTIL_DELETED",
+      secureExpireAfterHours: action.secureExpireAfterHours || 72,
     },
   })
   const visibleToClient = watch("visibleToClient")
   const showOnTimeline = watch("showOnTimeline")
   const requiresSecureResponse = watch("requiresSecureResponse")
   const secureFieldType = watch("secureFieldType") || "SHORT_TEXT"
+  const secureRetentionPolicy = watch("secureRetentionPolicy") || "UNTIL_DELETED"
+  const secureExpireAfterHours = watch("secureExpireAfterHours") ?? 72
 
   useEffect(() => {
     if (!open) return
@@ -144,6 +152,17 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
 
       payload.dueDate = values.dueDate && values.dueDate.trim() ? values.dueDate : null
 
+      if (payload.requiresSecureResponse) {
+        payload.secureRetentionPolicy = values.secureRetentionPolicy || "UNTIL_DELETED"
+        payload.secureExpireAfterHours =
+          payload.secureRetentionPolicy === "EXPIRE_AFTER_HOURS"
+            ? Number(values.secureExpireAfterHours) || 72
+            : null
+      } else {
+        payload.secureRetentionPolicy = "UNTIL_DELETED"
+        payload.secureExpireAfterHours = null
+      }
+
       const response = await fetch(`/api/action-items/${action.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -182,6 +201,8 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
         requiresSecureResponse: Boolean(action.requiresSecureResponse),
         securePrompt: action.securePrompt || "",
         secureFieldType: action.secureFieldType || "SHORT_TEXT",
+        secureRetentionPolicy: action.secureRetentionPolicy || "UNTIL_DELETED",
+        secureExpireAfterHours: action.secureExpireAfterHours || 72,
       })
     }
   }, [open, action, reset])
@@ -383,6 +404,36 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Retention policy</Label>
+                  <Select
+                    value={secureRetentionPolicy}
+                    onValueChange={(value) =>
+                      setValue("secureRetentionPolicy", value as "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UNTIL_DELETED">Keep until manually removed</SelectItem>
+                      <SelectItem value="EXPIRE_AFTER_VIEW">Self-destruct after first admin view</SelectItem>
+                      <SelectItem value="EXPIRE_AFTER_HOURS">Auto-delete after X hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {secureRetentionPolicy === "EXPIRE_AFTER_HOURS" && (
+                  <div className="space-y-1">
+                    <Label htmlFor="secure-expire-hours-edit">Delete after (hours)</Label>
+                    <Input
+                      id="secure-expire-hours-edit"
+                      type="number"
+                      min={1}
+                      max={168}
+                      {...register("secureExpireAfterHours", { valueAsNumber: true })}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

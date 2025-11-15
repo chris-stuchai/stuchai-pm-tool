@@ -43,12 +43,30 @@ interface ActionItem {
   requiresSecureResponse?: boolean
   securePrompt?: string | null
   secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureRetentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  secureExpireAfterHours?: number | null
+  secureViewedAt?: string | Date | null
   secureResponse?: {
     id: string
     submittedBy?: string | null
     createdAt: string | Date
     updatedAt: string | Date
   } | null
+  statusHistory?: Array<{
+    id: string
+    previousStatus?: string | null
+    newStatus: string
+    summary?: string | null
+    outcomeTag?: string | null
+    notifiedUserIds: string[]
+    followUpActionId?: string | null
+    createdAt: string | Date
+    author: {
+      id: string
+      name: string | null
+      email: string
+    }
+  }>
   attachments?: Array<{
     id: string
     name: string
@@ -56,6 +74,12 @@ interface ActionItem {
     mimeType?: string | null
     size?: number | null
   }>
+  reviewRequired?: boolean
+  reviewAssignee?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
 }
 
 type Role = "ADMIN" | "MANAGER" | "CLIENT"
@@ -65,6 +89,7 @@ interface ActionItemsFilterProps {
   canEdit: boolean
   currentUserRole: Role
   currentUserId: string
+  teammates: { id: string; name: string | null; email: string }[]
 }
 
 export function ActionItemsFilter({
@@ -72,6 +97,7 @@ export function ActionItemsFilter({
   canEdit,
   currentUserRole,
   currentUserId,
+  teammates,
 }: ActionItemsFilterProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [priorityFilter, setPriorityFilter] = useState<string>("all")

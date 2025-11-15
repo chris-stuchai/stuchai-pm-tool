@@ -28,12 +28,29 @@ interface SecureResponseSectionProps {
   } | null
   currentUserRole: Role
   canClientSubmit: boolean
+  retentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  expireAfterHours?: number | null
+  viewedAt?: string | Date | null
 }
 
 function formatDate(value?: string | Date | null) {
   if (!value) return ""
   const date = typeof value === "string" ? new Date(value) : value
   return date.toLocaleString()
+}
+
+function retentionDescription(
+  retentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null,
+  expireAfterHours?: number | null
+) {
+  switch (retentionPolicy) {
+    case "EXPIRE_AFTER_VIEW":
+      return "Visible one time. Deleted immediately after the first admin review."
+    case "EXPIRE_AFTER_HOURS":
+      return `Auto-deletes ${expireAfterHours || 24} hours after submission.`
+    default:
+      return "Stored until an admin purges it."
+  }
 }
 
 export function SecureResponseSection({
@@ -43,6 +60,9 @@ export function SecureResponseSection({
   secureResponse,
   currentUserRole,
   canClientSubmit,
+  retentionPolicy,
+  expireAfterHours,
+  viewedAt,
 }: SecureResponseSectionProps) {
   if (!prompt && !secureResponse && currentUserRole !== "CLIENT") {
     return null
@@ -55,6 +75,9 @@ export function SecureResponseSection({
           <p className="font-medium text-slate-900">Secure response required</p>
           <p className="text-xs text-muted-foreground">
             {prompt || "Provide the requested confidential details via this encrypted field."}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {retentionDescription(retentionPolicy, expireAfterHours)}
           </p>
         </div>
         {secureResponse ? (
@@ -71,7 +94,12 @@ export function SecureResponseSection({
           canSubmit={canClientSubmit}
         />
       ) : (
-        <AdminSecureViewer actionId={actionId} secureResponse={secureResponse} />
+        <AdminSecureViewer
+          actionId={actionId}
+          secureResponse={secureResponse}
+          viewedAt={viewedAt}
+          retentionPolicy={retentionPolicy}
+        />
       )}
     </div>
   )
@@ -173,9 +201,11 @@ function renderField(
 interface AdminViewerProps {
   actionId: string
   secureResponse?: { id: string; createdAt: string | Date } | null
+  retentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  viewedAt?: string | Date | null
 }
 
-function AdminSecureViewer({ actionId, secureResponse }: AdminViewerProps) {
+function AdminSecureViewer({ actionId, secureResponse, retentionPolicy, viewedAt }: AdminViewerProps) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -205,6 +235,9 @@ function AdminSecureViewer({ actionId, secureResponse }: AdminViewerProps) {
         <>
           <p className="text-xs text-muted-foreground">
             Submitted {formatDate(secureResponse.createdAt)}.
+            {retentionPolicy === "EXPIRE_AFTER_VIEW" && viewedAt && (
+              <span className="ml-1 text-destructive">Already viewed and purged.</span>
+            )}
           </p>
           <Button size="sm" variant="outline" onClick={loadSecret} disabled={loading}>
             {loading ? "Opening..." : "View secure submission"}

@@ -34,6 +34,9 @@ interface ActionItem {
   requiresSecureResponse?: boolean
   securePrompt?: string | null
   secureFieldType?: "SHORT_TEXT" | "LONG_TEXT" | "SECRET" | null
+  secureRetentionPolicy?: "UNTIL_DELETED" | "EXPIRE_AFTER_VIEW" | "EXPIRE_AFTER_HOURS" | null
+  secureExpireAfterHours?: number | null
+  secureViewedAt?: string | Date | null
   secureResponse?: {
     id: string
     submittedBy?: string | null
@@ -47,6 +50,27 @@ interface ActionItem {
     mimeType?: string | null
     size?: number | null
   }>
+  reviewRequired?: boolean
+  reviewAssignee?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  statusHistory?: Array<{
+    id: string
+    previousStatus?: string | null
+    newStatus: string
+    summary?: string | null
+    outcomeTag?: string | null
+    notifiedUserIds: string[]
+    followUpActionId?: string | null
+    createdAt: string | Date
+    author: {
+      id: string
+      name: string | null
+      email: string
+    }
+  }>
 }
 
 interface ProjectActionItemsProps {
@@ -55,6 +79,7 @@ interface ProjectActionItemsProps {
   canEdit: boolean
   currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
   currentUserId?: string
+  teammates?: { id: string; name: string | null; email: string }[]
 }
 
 export function ProjectActionItems({
@@ -63,6 +88,7 @@ export function ProjectActionItems({
   canEdit,
   currentUserRole = "ADMIN",
   currentUserId,
+  teammates = [],
 }: ProjectActionItemsProps) {
   return (
     <Card>
@@ -80,6 +106,7 @@ export function ProjectActionItems({
           canEdit={canEdit}
           currentUserRole={currentUserRole}
           currentUserId={currentUserId}
+          teammates={teammates}
         />
       </CardContent>
     </Card>

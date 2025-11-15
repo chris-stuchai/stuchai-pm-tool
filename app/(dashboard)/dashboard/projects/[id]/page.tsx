@@ -54,6 +54,28 @@ async function getProject(id: string) {
               updatedAt: true,
             },
           },
+          reviewAssignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          attachments: true,
+          statusHistory: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",
@@ -84,6 +106,22 @@ export default async function ProjectDetailPage({
   }
 
   const canEdit = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
+  const teammates = canEdit
+    ? await db.user.findMany({
+        where: {
+          active: true,
+          role: {
+            in: [UserRole.ADMIN, UserRole.MANAGER],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+        orderBy: { name: "asc" },
+      })
+    : []
   const computedProgress = calculateProjectProgress({
     actionItems: project.actionItems,
     milestones: project.milestones ?? [],
@@ -217,6 +255,7 @@ export default async function ProjectDetailPage({
         canEdit={canEdit}
         currentUserRole={session.user.role}
         currentUserId={session.user.id}
+        teammates={teammates}
       />
     </div>
   )
