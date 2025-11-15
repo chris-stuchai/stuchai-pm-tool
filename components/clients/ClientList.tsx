@@ -69,20 +69,20 @@ export function ClientList({ clients, canEdit }: ClientListProps) {
                   </CardDescription>
                 </div>
                 {canEdit && (
-                  <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
+                  <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end">
                     <ClientStatusToggle
                       clientId={client.id}
                       isActive={client.active}
-                      className="w-full md:w-auto"
+                      className="w-full sm:w-auto"
                     />
                     <Button
                       variant="outline"
-                      size="icon"
-                      className="rounded-full w-full md:w-10 md:h-10"
+                      className="w-full sm:w-auto"
                       aria-label={`Edit ${client.name}`}
                       onClick={() => setEditingClient(client)}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Client
                     </Button>
                   </div>
                 )}

@@ -504,8 +504,12 @@ export default async function DashboardPage() {
                   const computedProgress = calculateProjectProgress({
                     actionItems: project.actionItems,
                     milestones: project.milestones || [],
+                    status: project.status,
                   })
-                  const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
+                  const hasSegments =
+                    (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
+                  const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
+                  const displayProgress = project.status === "COMPLETED" ? 100 : baseProgress
                   return (
                     <div key={project.id} className="flex items-center justify-between">
                       <div>

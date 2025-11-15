@@ -78,8 +78,11 @@ export default async function ProjectDetailPage({
   const computedProgress = calculateProjectProgress({
     actionItems: project.actionItems,
     milestones: project.milestones ?? [],
+    status: project.status,
   })
-  const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
+  const hasSegments = (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
+  const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
+  const displayProgress = project.status === "COMPLETED" ? 100 : baseProgress
 
   return (
     <div className="space-y-6">

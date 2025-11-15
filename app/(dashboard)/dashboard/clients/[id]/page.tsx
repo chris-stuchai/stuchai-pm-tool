@@ -162,8 +162,11 @@ export default async function ClientDetailPage({
                   const computedProgress = calculateProjectProgress({
                     actionItems: project.actionItems,
                     milestones: project.milestones ?? [],
+                    status: project.status,
                   })
-                  const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
+                  const hasSegments = (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
+                  const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
+                  const displayProgress = project.status === "COMPLETED" ? 100 : baseProgress
                   const openTasks = project.actionItems.filter((item) => item.status !== "COMPLETED").length
                   return (
                     <div key={project.id} className="space-y-2">
