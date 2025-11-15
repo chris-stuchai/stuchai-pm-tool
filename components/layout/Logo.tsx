@@ -11,7 +11,7 @@ export function Logo() {
         {!imageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src="/stuchai-logo-official.png"
+            src="https://i.imgur.com/An3fwaG.png"
             alt="StuchAI"
             className="h-10 w-full object-contain"
             onError={() => setImageError(true)}
