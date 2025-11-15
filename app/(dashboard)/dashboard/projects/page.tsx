@@ -17,6 +17,10 @@ import Link from "next/link"
 import { formatDate } from "@/lib/utils"
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog"
 import { calculateProjectProgress } from "@/lib/projects"
+import {
+  AdminProjectGroup,
+  AdminProjectsBoard,
+} from "@/components/projects/AdminProjectsBoard"
 
 const projectQuery = Prisma.validator<Prisma.ProjectFindManyArgs>()({
   include: {
@@ -38,6 +42,7 @@ const projectQuery = Prisma.validator<Prisma.ProjectFindManyArgs>()({
       select: {
         id: true,
         status: true,
+        dueDate: true,
       },
     },
     milestones: true,
@@ -84,6 +89,113 @@ async function getProjectsForUser(user: {
   })
 }
 
+function getProjectHealth(
+  project: ProjectWithRelations,
+  openTasks: number,
+  overdueTasks: number
+) {
+  const now = Date.now()
+  if (project.status === "COMPLETED") {
+    return { label: "Completed", tone: "success" as const }
+  }
+
+  if (project.dueDate && project.dueDate.getTime() < now) {
+    return { label: "Past Due", tone: "destructive" as const }
+  }
+
+  if (overdueTasks > 0) {
+    return { label: "At Risk", tone: "destructive" as const }
+  }
+
+  if (openTasks === 0) {
+    return { label: "Waiting", tone: "info" as const }
+  }
+
+  if (project.dueDate) {
+    const daysRemaining =
+      (project.dueDate.getTime() - now) / (1000 * 60 * 60 * 24)
+    if (daysRemaining <= 14) {
+      return { label: "Due Soon", tone: "warning" as const }
+    }
+  }
+
+  return { label: "On Track", tone: "success" as const }
+}
+
+function buildAdminGroups(
+  projects: ProjectWithRelations[]
+): AdminProjectGroup[] {
+  const groups = new Map<string, AdminProjectGroup>()
+
+  projects.forEach((project) => {
+    const groupId = project.client?.id ?? "unassigned"
+    const groupName = project.client?.name ?? "Unassigned / Internal"
+
+    const openTasks = project.actionItems.filter(
+      (item) => item.status !== "COMPLETED"
+    )
+    const overdueTasks = openTasks.filter(
+      (item) =>
+        item.dueDate && new Date(item.dueDate).getTime() < Date.now()
+    ).length
+
+    const computedProgress = calculateProjectProgress({
+      actionItems: project.actionItems,
+      milestones: project.milestones ?? [],
+      status: project.status,
+      startDate: project.startDate,
+      dueDate: project.dueDate,
+      progress: project.progress,
+    })
+    const hasSegments =
+      (project.actionItems?.length ?? 0) + (project.milestones?.length ?? 0) > 0
+    const baseProgress = hasSegments ? computedProgress : project.progress ?? 0
+    const displayProgress =
+      project.status === "COMPLETED" ? 100 : Math.round(baseProgress)
+
+    if (!groups.has(groupId)) {
+      groups.set(groupId, {
+        clientId: groupId,
+        clientName: groupName,
+        clientEmail: project.client?.email,
+        stats: {
+          totalProjects: 0,
+          activeProjects: 0,
+          openTasks: 0,
+          overdueProjects: 0,
+        },
+        projects: [],
+      })
+    }
+
+    const group = groups.get(groupId)!
+    group.stats.totalProjects += 1
+    if (project.status !== "COMPLETED") {
+      group.stats.activeProjects += 1
+    }
+    group.stats.openTasks += openTasks.length
+    if (overdueTasks > 0 || (project.dueDate && project.dueDate < new Date())) {
+      group.stats.overdueProjects += 1
+    }
+
+    group.projects.push({
+      id: project.id,
+      name: project.name,
+      status: project.status,
+      progress: displayProgress,
+      openTasks: openTasks.length,
+      overdueTasks,
+      dueDate: project.dueDate?.toISOString() ?? null,
+      owner: project.creator?.name ?? project.creator?.email ?? null,
+      health: getProjectHealth(project, openTasks.length, overdueTasks),
+    })
+  })
+
+  return Array.from(groups.values()).sort(
+    (a, b) => b.stats.openTasks - a.stats.openTasks
+  )
+}
+
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
@@ -95,6 +207,9 @@ export default async function ProjectsPage() {
   })
   const canCreate = session.user.role === UserRole.ADMIN || session.user.role === UserRole.MANAGER
   const isClient = session.user.role === UserRole.CLIENT
+
+  const adminGroups =
+    !isClient && projects.length > 0 ? buildAdminGroups(projects) : []
 
   return (
     <div className="space-y-6">
@@ -119,7 +234,7 @@ export default async function ProjectsPage() {
             </p>
           </CardContent>
         </Card>
-      ) : (
+      ) : isClient ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => {
             const computedProgress = calculateProjectProgress({
@@ -175,6 +290,8 @@ export default async function ProjectsPage() {
             </Card>
           )})}
         </div>
+      ) : (
+        <AdminProjectsBoard groups={adminGroups} />
       )}
     </div>
   )

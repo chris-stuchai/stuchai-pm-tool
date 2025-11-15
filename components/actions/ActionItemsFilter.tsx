@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ActionItemList } from "./ActionItemList"
+import { AdminActionBoard } from "./AdminActionBoard"
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ interface ActionItem {
     id: string
     name: string
     client: {
+      id?: string
       name: string
     }
   } | null
@@ -226,15 +228,11 @@ export function ActionItemsFilter({
           </Card>
         </div>
       ) : (
-        <Card>
-          <CardContent className="pt-6">
-            <ActionItemList
-              actionItems={filteredItems}
-              canEdit={canEdit}
-              currentUserRole={currentUserRole}
-            />
-          </CardContent>
-        </Card>
+        <AdminActionBoard
+          items={filteredItems}
+          canEdit={canEdit}
+          currentUserRole={currentUserRole}
+        />
       )}
     </div>
   )
