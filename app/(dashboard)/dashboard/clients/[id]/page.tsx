@@ -32,10 +32,9 @@ async function getClient(id: string) {
       projects: {
         include: {
           actionItems: {
-            where: {
-              status: {
-                not: "COMPLETED",
-              },
+            select: {
+              id: true,
+              status: true,
             },
           },
           milestones: true,
@@ -164,6 +163,8 @@ export default async function ClientDetailPage({
                     actionItems: project.actionItems,
                     milestones: project.milestones ?? [],
                   })
+                  const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
+                  const openTasks = project.actionItems.filter((item) => item.status !== "COMPLETED").length
                   return (
                     <div key={project.id} className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -175,10 +176,10 @@ export default async function ClientDetailPage({
                         </Link>
                         <Badge variant="outline">{project.status}</Badge>
                       </div>
-                      <Progress value={computedProgress} className="h-2" />
+                      <Progress value={displayProgress} className="h-2" />
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{computedProgress}% complete</span>
-                        <span>{project.actionItems.length} open tasks</span>
+                        <span>{displayProgress}% complete</span>
+                        <span>{openTasks} open task{openTasks === 1 ? "" : "s"}</span>
                       </div>
                     </div>
                   )
@@ -203,6 +204,7 @@ export default async function ClientDetailPage({
             clientId={client.id}
             currentUserId={session.user.id}
             disabled={!client.active}
+            isClientActive={client.active}
           />
         </div>
       </div>

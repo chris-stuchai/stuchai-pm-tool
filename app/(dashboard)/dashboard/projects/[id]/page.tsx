@@ -79,6 +79,7 @@ export default async function ProjectDetailPage({
     actionItems: project.actionItems,
     milestones: project.milestones ?? [],
   })
+  const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
 
   return (
     <div className="space-y-6">
@@ -113,9 +114,9 @@ export default async function ProjectDetailPage({
             <div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Progress</span>
-                <span className="font-medium">{computedProgress}%</span>
+                <span className="font-medium">{displayProgress}%</span>
               </div>
-              <Progress value={computedProgress} />
+              <Progress value={displayProgress} />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>

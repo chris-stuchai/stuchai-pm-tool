@@ -126,6 +126,8 @@ export default async function ProjectsPage() {
               actionItems: project.actionItems,
               milestones: project.milestones ?? [],
             })
+            const displayProgress = project.status === "COMPLETED" ? 100 : computedProgress
+            const openTasks = project.actionItems.filter((item) => item.status !== "COMPLETED").length
             return (
             <Card key={project.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
@@ -142,13 +144,13 @@ export default async function ProjectsPage() {
                   <div>
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{computedProgress}%</span>
+                      <span className="font-medium">{displayProgress}%</span>
                     </div>
-                    <Progress value={computedProgress} />
+                    <Progress value={displayProgress} />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Tasks</span>
-                    <span>{project.actionItems.length} items</span>
+                    <span className="text-muted-foreground">Open tasks</span>
+                    <span>{openTasks} item{openTasks === 1 ? "" : "s"}</span>
                   </div>
                   {project.dueDate && (
                     <div className="text-sm text-muted-foreground">

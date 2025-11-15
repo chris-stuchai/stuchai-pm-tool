@@ -16,7 +16,11 @@ async function getClientConversations(userId: string, role: UserRole, userEmail?
 
   const clients = await db.client.findMany({
     where: baseWhere,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      active: true,
       messages: {
         take: 1,
         orderBy: {
