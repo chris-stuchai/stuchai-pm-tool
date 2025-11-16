@@ -138,12 +138,15 @@ export function StatusUpdateDialog({
           </div>
           <div className="grid gap-2">
             <Label>Outcome</Label>
-            <Select value={outcomeTag ?? ""} onValueChange={(value) => setOutcomeTag(value || undefined)}>
+            <Select
+              value={outcomeTag ?? "none"}
+              onValueChange={(value) => setOutcomeTag(value === "none" ? undefined : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select an outcome tag" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {OUTCOME_TAGS.map((tag) => (
                   <SelectItem key={tag} value={tag}>
                     {tag}
@@ -203,12 +206,15 @@ export function StatusUpdateDialog({
           {["ADMIN", "MANAGER"].includes(currentUserRole) && (
             <div className="space-y-2 rounded-md border p-3">
               <Label className="text-sm">Create follow-up task</Label>
-              <Select value={followUpAssigneeId} onValueChange={setFollowUpAssigneeId}>
+              <Select
+                value={followUpAssigneeId ?? "none"}
+                onValueChange={(value) => setFollowUpAssigneeId(value === "none" ? undefined : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="No follow-up" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No follow-up</SelectItem>
+                  <SelectItem value="none">No follow-up</SelectItem>
                   {teammates.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name || user.email}
