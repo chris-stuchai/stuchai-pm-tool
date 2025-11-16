@@ -267,6 +267,7 @@ export function AdminActionBoard({
                     canEdit={canEdit}
                     currentUserRole={currentUserRole}
                     teammates={teammates}
+                    variant="kanban"
                   />
                 ) : (
                   <p className="text-sm text-muted-foreground">No items in this column.</p>

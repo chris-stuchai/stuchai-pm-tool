@@ -107,6 +107,7 @@ interface ActionItemListProps {
   currentUserRole?: "ADMIN" | "MANAGER" | "CLIENT"
   currentUserId?: string
   teammates?: { id: string; name: string | null; email: string }[]
+  variant?: "default" | "kanban"
 }
 
 const priorityColors = {
@@ -130,6 +131,7 @@ export function ActionItemList({
   currentUserRole = "ADMIN",
   currentUserId,
   teammates = [],
+  variant = "default",
 }: ActionItemListProps) {
   const router = useRouter()
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
@@ -279,6 +281,13 @@ export function ActionItemList({
     )
   }
 
+  const containerBaseClass =
+    variant === "kanban"
+      ? "flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+      : "flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+
+  const showDetailsToggle = variant === "default"
+
   return (
     <div className="space-y-3">
       {actionItems.map((item) => {
@@ -308,66 +317,56 @@ export function ActionItemList({
         }
 
         return (
-          <div
-            key={item.id}
-            className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-3 flex-1">
-                  <StatusIcon
-                    className={`h-5 w-5 mt-0.5 ${
-                      item.status === "COMPLETED"
-                        ? "text-green-600"
-                        : isOverdue
-                        ? "text-red-600"
-                        : "text-gray-400"
-                    }`}
-                  />
-                  <div className="flex-1">
+          <div key={item.id} className={containerBaseClass}>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <StatusIcon
+                  className={`h-5 w-5 ${
+                    item.status === "COMPLETED"
+                      ? "text-green-600"
+                      : isOverdue
+                      ? "text-red-600"
+                      : "text-gray-400"
+                  }`}
+                />
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="font-medium">{item.title}</h4>
-                    {item.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {item.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {item.project && (
-                        <span className="text-xs text-muted-foreground">
-                          {item.project.name}
-                        </span>
-                      )}
-                      {item.dueDate && (
-                        <span
-                          className={`text-xs ${
-                            isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"
-                          }`}
-                        >
-                          Due: {formatDate(item.dueDate)}
-                        </span>
-                      )}
-                    </div>
-                    {item.showOnTimeline && (
-                      <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
-                        <CalendarDays className="h-3 w-3" />
-                        Timeline
-                        {item.timelineLabel ? ` • ${item.timelineLabel}` : ""}
-                      </div>
-                    )}
-                    {item.reviewRequired && (
-                      <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                        Review pending
-                        {item.reviewAssignee ? ` • ${item.reviewAssignee.name || item.reviewAssignee.email}` : ""}
-                      </div>
+                    <Badge className={priorityColors[priorityValue] || ""}>
+                      {item.priority || "MEDIUM"}
+                    </Badge>
+                  </div>
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    {item.project && <span>{item.project.name}</span>}
+                    {item.dueDate && (
+                      <span
+                        className={
+                          isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                        }
+                      >
+                        Due: {formatDate(item.dueDate)}
+                      </span>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={priorityColors[priorityValue] || ""}>
-                    {item.priority || "MEDIUM"}
-                  </Badge>
-                  {canEdit && (
-                    <>
+                  {item.showOnTimeline && (
+                    <div className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
+                      <CalendarDays className="h-3 w-3" />
+                      Timeline{item.timelineLabel ? ` • ${item.timelineLabel}` : ""}
+                    </div>
+                  )}
+                  {item.reviewRequired && (
+                    <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      Review pending
+                      {item.reviewAssignee ? ` • ${item.reviewAssignee.name || item.reviewAssignee.email}` : ""}
+                    </div>
+                  )}
+                  {variant === "kanban" && canEdit && (
+                    <div className="flex flex-wrap gap-2">
                       {item.assignee && (
                         <Button
                           variant="ghost"
@@ -379,11 +378,7 @@ export function ActionItemList({
                           <Mail className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStatusDialogItem(item)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setStatusDialogItem(item)}>
                         Update Status
                       </Button>
                       <EditActionItemDialog
@@ -394,49 +389,7 @@ export function ActionItemList({
                           </Button>
                         }
                       />
-                      <AlertDialog
-                        open={deleteTarget === item.id}
-                        onOpenChange={(open) => {
-                          if (!open) {
-                            setDeleteTarget(null)
-                          } else {
-                            setDeleteTarget(item.id)
-                          }
-                        }}
-                      >
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            title="Delete action"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete action item?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently remove “{item.title}” and all of its attachments.
-                              This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={deleteLoading}>
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-white hover:bg-destructive/90"
-                              onClick={handleDelete}
-                              disabled={deleteLoading}
-                            >
-                              {deleteLoading ? "Deleting..." : "Delete"}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
@@ -453,28 +406,30 @@ export function ActionItemList({
                   </span>
                 </div>
               )}
-              <div className="pt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() =>
-                    setExpandedRows((prev) => ({
-                      ...prev,
-                      [item.id]: !prev[item.id],
-                    }))
-                  }
-                >
-                  {expandedRows[item.id] ? (
-                    <ChevronUp className="mr-1 h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="mr-1 h-4 w-4" />
-                  )}
-                  {expandedRows[item.id] ? "Hide details" : "View details"}
-                </Button>
-              </div>
-              {expandedRows[item.id] && (
-                <div className="mt-3 space-y-4">
+              {showDetailsToggle && (
+                <div className="pt-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      setExpandedRows((prev) => ({
+                        ...prev,
+                        [item.id]: !prev[item.id],
+                      }))
+                    }
+                  >
+                    {expandedRows[item.id] ? (
+                      <ChevronUp className="mr-1 h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="mr-1 h-4 w-4" />
+                    )}
+                    {expandedRows[item.id] ? "Hide details" : "View details"}
+                  </Button>
+                </div>
+              )}
+              {(expandedRows[item.id] || variant === "default") && (
+                <div className="space-y-4">
                   {item.attachments && item.attachments.length > 0 && (
                     <div className="space-y-1">
                       {item.attachments.map((attachment) => (
@@ -510,8 +465,8 @@ export function ActionItemList({
                       viewedAt={item.secureViewedAt}
                     />
                   )}
-                  <ActionHistoryList history={item.statusHistory || []} />
-                  {canEdit && (
+                  {variant === "default" && <ActionHistoryList history={item.statusHistory || []} />}
+                  {canEdit && variant === "default" && (
                     <UploadAttachmentDialog actionItemId={item.id} onUploaded={() => router.refresh()} />
                   )}
                 </div>
@@ -542,6 +497,70 @@ export function ActionItemList({
                 </div>
               )}
             </div>
+            {variant === "default" && (
+              <div className="flex items-center gap-2 self-start">
+                {canEdit && (
+                  <>
+                    {item.assignee && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSendReminder(item.id)}
+                        disabled={sendingReminder === item.id}
+                        title="Send email reminder"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => setStatusDialogItem(item)}>
+                      Update Status
+                    </Button>
+                    <EditActionItemDialog
+                      action={editablePayload}
+                      trigger={
+                        <Button variant="ghost" size="icon" title="Edit action">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <AlertDialog
+                      open={deleteTarget === item.id}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setDeleteTarget(null)
+                        } else {
+                          setDeleteTarget(item.id)
+                        }
+                      }}
+                    >
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-destructive" title="Delete action">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete action item?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove “{item.title}” and all of its attachments. This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                            onClick={handleDelete}
+                            disabled={deleteLoading}
+                          >
+                            {deleteLoading ? "Deleting..." : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )
       })}
