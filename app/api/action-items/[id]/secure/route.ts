@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { SecureRetentionPolicy, UserRole } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 import { encryptSecret, decryptSecret } from "@/lib/crypto"
 import { logActivity } from "@/lib/activity"
 
 interface RouteParams {
   params: { id: string }
 }
+
+const prisma = db as any
 
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
@@ -21,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const response = await db.actionSecureResponse.findUnique({
+    const response = await prisma.actionSecureResponse.findUnique({
       where: { actionItemId: params.id },
       include: {
         submitter: {
@@ -48,17 +50,17 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     const now = Date.now()
     const expiresAt =
-      response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_HOURS &&
+      response.actionItem.secureRetentionPolicy === "EXPIRE_AFTER_HOURS" &&
       response.actionItem.secureExpireAfterHours
         ? new Date(response.createdAt).getTime() + response.actionItem.secureExpireAfterHours * 60 * 60 * 1000
         : null
 
-    if (response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_VIEW && response.actionItem.secureViewedAt) {
+    if (response.actionItem.secureRetentionPolicy === "EXPIRE_AFTER_VIEW" && response.actionItem.secureViewedAt) {
       return NextResponse.json({ error: "Secure response already viewed and purged." }, { status: 404 })
     }
 
     if (expiresAt && now > expiresAt) {
-      await db.actionSecureResponse.delete({
+      await prisma.actionSecureResponse.delete({
         where: { actionItemId: params.id },
       })
       return NextResponse.json({ error: "Secure response expired." }, { status: 404 })
@@ -66,18 +68,18 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     const value = decryptSecret(response.encryptedData)
 
-    if (response.actionItem.secureRetentionPolicy === SecureRetentionPolicy.EXPIRE_AFTER_VIEW) {
-      await db.$transaction([
-        db.actionSecureResponse.delete({
+    if (response.actionItem.secureRetentionPolicy === "EXPIRE_AFTER_VIEW") {
+      await prisma.$transaction([
+        prisma.actionSecureResponse.delete({
           where: { actionItemId: params.id },
         }),
-        db.actionItem.update({
+        prisma.actionItem.update({
           where: { id: params.id },
           data: { secureViewedAt: new Date() },
         }),
       ])
     } else {
-      await db.actionItem.update({
+      await prisma.actionItem.update({
         where: { id: params.id },
         data: { secureViewedAt: new Date() },
       })
@@ -102,14 +104,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const actionItem = await db.actionItem.findUnique({
+    const actionItem = await prisma.actionItem.findUnique({
       where: { id: params.id },
-      select: {
-        id: true,
-        requiresSecureResponse: true,
-        securePrompt: true,
-        visibleToClient: true,
-        clientCanComplete: true,
+      include: {
         project: {
           select: {
             client: {
@@ -119,7 +116,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
-        assignedTo: true,
       },
     })
 
@@ -138,7 +134,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const value = typeof body.value === "string" ? body.value.trim() : ""
+    let value = ""
+
+    if (typeof body.value === "string") {
+      value = body.value.trim()
+    } else if (typeof body.password === "string" || typeof body.username === "string") {
+      const username = typeof body.username === "string" ? body.username.trim() : ""
+      const password = typeof body.password === "string" ? body.password.trim() : ""
+      if (!password) {
+        return NextResponse.json({ error: "Password is required." }, { status: 400 })
+      }
+      value = JSON.stringify({ username, password })
+    }
 
     if (!value) {
       return NextResponse.json({ error: "Value is required." }, { status: 400 })
@@ -146,8 +153,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const encryptedData = encryptSecret(value)
 
-    await db.$transaction([
-      db.actionSecureResponse.upsert({
+      await prisma.$transaction([
+        prisma.actionSecureResponse.upsert({
         where: { actionItemId: params.id },
         create: {
           actionItemId: params.id,
@@ -159,7 +166,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           submittedBy: session.user.id,
         },
       }),
-      db.actionItem.update({
+      prisma.actionItem.update({
         where: { id: params.id },
         data: { secureViewedAt: null },
       }),

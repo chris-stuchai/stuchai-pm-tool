@@ -210,7 +210,7 @@ export function EditActionItemDialog({ trigger, action }: EditActionItemDialogPr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Edit Action Item</DialogTitle>
           <DialogDescription>Update task details or client visibility.</DialogDescription>

@@ -115,9 +115,11 @@ interface ClientFormProps {
 function ClientSecureForm({ actionId, fieldType, secureResponse, canSubmit }: ClientFormProps) {
   const router = useRouter()
   const [value, setValue] = useState("")
+  const [secretFields, setSecretFields] = useState({ username: "", password: "" })
   const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(!secureResponse)
   const [error, setError] = useState<string | null>(null)
+  const isSecretField = fieldType === "SECRET"
 
   if (!canSubmit) {
     return <p className="mt-3 text-xs text-muted-foreground">This field is managed by your StuchAi team.</p>
@@ -128,16 +130,30 @@ function ClientSecureForm({ actionId, fieldType, secureResponse, canSubmit }: Cl
     setSubmitting(true)
     setError(null)
     try {
+      const submissionPayload = isSecretField
+        ? {
+            username: secretFields.username.trim(),
+            password: secretFields.password.trim(),
+          }
+        : { value }
+
+      if (isSecretField && "password" in submissionPayload && !submissionPayload.password) {
+        setSubmitting(false)
+        setError("Password is required.")
+        return
+      }
+
       const response = await fetch(`/api/action-items/${actionId}/secure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value }),
+        body: JSON.stringify(submissionPayload),
       })
-      const payload = await response.json().catch(() => ({}))
+      const result = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(payload.error || "Unable to submit.")
+        throw new Error(result.error || "Unable to submit.")
       }
       setValue("")
+      setSecretFields({ username: "", password: "" })
       setShowForm(false)
       router.refresh()
     } catch (err: any) {
@@ -162,9 +178,22 @@ function ClientSecureForm({ actionId, fieldType, secureResponse, canSubmit }: Cl
       )}
       {showForm && (
         <form onSubmit={handleSubmit} className="space-y-3">
-          {renderField(fieldType, value, setValue)}
+          {renderField({
+            fieldType,
+            value,
+            setValue,
+            secretFields,
+            setSecretFields,
+          })}
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="sm" disabled={submitting || !value}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={
+              submitting ||
+              (isSecretField ? !secretFields.password.trim() : !value)
+            }
+          >
             {submitting ? "Submitting..." : secureResponse ? "Replace submission" : "Submit securely"}
           </Button>
         </form>
@@ -173,11 +202,36 @@ function ClientSecureForm({ actionId, fieldType, secureResponse, canSubmit }: Cl
   )
 }
 
-function renderField(
-  fieldType: FieldType = "SHORT_TEXT",
-  value: string,
+function renderField({
+  fieldType = "SHORT_TEXT",
+  value,
+  setValue,
+  secretFields,
+  setSecretFields,
+}: {
+  fieldType?: FieldType
+  value: string
   setValue: (next: string) => void
-) {
+  secretFields: { username: string; password: string }
+  setSecretFields: (next: { username: string; password: string }) => void
+}) {
+  if (fieldType === "SECRET") {
+    return (
+      <div className="space-y-2">
+        <Input
+          placeholder="Username or login email"
+          value={secretFields.username}
+          onChange={(event) => setSecretFields({ ...secretFields, username: event.target.value })}
+        />
+        <Input
+          type="password"
+          placeholder="Password"
+          value={secretFields.password}
+          onChange={(event) => setSecretFields({ ...secretFields, password: event.target.value })}
+        />
+      </div>
+    )
+  }
   if (fieldType === "LONG_TEXT") {
     return (
       <Textarea
@@ -190,7 +244,7 @@ function renderField(
   }
   return (
     <Input
-      type={fieldType === "SECRET" ? "password" : "text"}
+      type="text"
       placeholder="Enter details..."
       value={value}
       onChange={(event) => setValue(event.target.value)}
@@ -256,11 +310,49 @@ function AdminSecureViewer({ actionId, secureResponse, retentionPolicy, viewedAt
               Copy the value and store it in a password manager. It remains encrypted at rest.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded bg-slate-100 p-3 font-mono text-sm text-slate-900">
-            {value}
+          <div className="space-y-3">
+            {renderAdminValue(value)}
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function renderAdminValue(value: string | null) {
+  if (!value) {
+    return <p className="text-sm text-muted-foreground">No secret provided.</p>
+  }
+  try {
+    const parsed = JSON.parse(value)
+    if (parsed && (parsed.username || parsed.password)) {
+      return (
+        <>
+          {parsed.username && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Username</p>
+              <div className="rounded bg-slate-100 p-2 font-mono text-sm text-slate-900 break-all">
+                {parsed.username}
+              </div>
+            </div>
+          )}
+          {parsed.password && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Password</p>
+              <div className="rounded bg-slate-100 p-2 font-mono text-sm text-slate-900 break-all">
+                {parsed.password}
+              </div>
+            </div>
+          )}
+        </>
+      )
+    }
+  } catch (err) {
+    // fall through to raw render
+  }
+  return (
+    <div className="rounded bg-slate-100 p-3 font-mono text-sm text-slate-900 break-all">
+      {value}
     </div>
   )
 }
