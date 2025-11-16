@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
@@ -26,6 +27,7 @@ function getInitials(name?: string | null, email?: string) {
 }
 
 export function TeamPresenceBar() {
+  const { data: session } = useSession()
   const [users, setUsers] = useState<PresenceUser[]>([])
 
   useEffect(() => {
@@ -55,13 +57,33 @@ export function TeamPresenceBar() {
     }
   }, [])
 
-  if (users.length === 0) {
+  const internalUsers = users.filter((user) => user.role !== "CLIENT")
+  const isClientView = session?.user?.role === "CLIENT"
+
+  if (isClientView) {
+    const supportOnline = internalUsers.some((user) => user.isOnline)
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span
+          className={cn(
+            "inline-block h-2.5 w-2.5 rounded-full",
+            supportOnline ? "bg-emerald-500" : "bg-gray-300"
+          )}
+        />
+        StuchAi support {supportOnline ? "is online" : "will respond shortly"}
+      </div>
+    )
+  }
+
+  const displayUsers = internalUsers.length > 0 ? internalUsers : users
+
+  if (displayUsers.length === 0) {
     return null
   }
 
   const maxVisible = 4
-  const visible = users.slice(0, maxVisible)
-  const overflow = users.length - visible.length
+  const visible = displayUsers.slice(0, maxVisible)
+  const overflow = displayUsers.length - visible.length
 
   return (
     <div className="flex items-center gap-2">
